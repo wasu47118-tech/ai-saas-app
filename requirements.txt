@@ -1,0 +1,7 @@
+streamlit
+pandas
+pillow
+pytesseract
+requests
+PyPDF2
+psutil
