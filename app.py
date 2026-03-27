@@ -16,10 +16,17 @@ import time
 # ============================================
 
 # ============================================
-# LICENSE SYSTEM (PURCHASE FIRST)
+# DEMO MODE CONFIGURATION
 # ============================================
 
-# License check function
+# Check if demo mode is enabled (via URL parameter)
+query_params = st.query_params
+demo_mode = query_params.get("demo", "false") == "true"
+
+# ============================================
+# LICENSE SYSTEM
+# ============================================
+
 def check_license():
     """Check if software is licensed"""
     license_file = "nexa_license.json"
@@ -52,14 +59,12 @@ def save_license(company_name, email, phone):
     return license_data
 
 # ============================================
-# REMINDER SYSTEM (AUTO MESSAGES)
+# REMINDER SYSTEM
 # ============================================
 
 def send_reminder(guest_name, phone, check_out_date):
     """Send automatic reminder to guest"""
     try:
-        # SMS API (Twilio, MSG91, etc.) - Configure your API here
-        # For demo, we'll just log it
         reminder_data = {
             'guest': guest_name,
             'phone': phone,
@@ -68,14 +73,9 @@ def send_reminder(guest_name, phone, check_out_date):
             'sent_at': datetime.datetime.now().isoformat()
         }
         
-        # Store in session for display
         if 'reminders_sent' not in st.session_state:
             st.session_state.reminders_sent = []
         st.session_state.reminders_sent.append(reminder_data)
-        
-        # Here you can integrate actual SMS API
-        # Example: requests.post("https://api.msg91.com/api/sendhttp.php", data={...})
-        
         return True
     except:
         return False
@@ -93,17 +93,17 @@ def check_auto_reminders():
                 guest['reminder_sent'] = True
 
 # ============================================
-# PURCHASE PAGE
+# PURCHASE PAGE (WITH DEMO MODE)
 # ============================================
 
 def show_purchase_page():
-    """Show purchase/license page"""
+    """Show purchase/license page with demo option"""
     st.markdown("""
     <style>
         .purchase-container {
-            max-width: 600px;
-            margin: 2rem auto;
-            padding: 2rem;
+            max-width: 700px;
+            margin: 1rem auto;
+            padding: 1.5rem;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
@@ -111,11 +111,11 @@ def show_purchase_page():
         .purchase-card {
             background: white;
             border-radius: 15px;
-            padding: 2rem;
+            padding: 1.5rem;
             text-align: center;
         }
         .price {
-            font-size: 3rem;
+            font-size: 2.5rem;
             color: #667eea;
             font-weight: bold;
         }
@@ -124,13 +124,22 @@ def show_purchase_page():
             margin: 0.5rem 0;
             background: #f8f9fa;
             border-radius: 8px;
+            text-align: left;
+        }
+        .demo-badge {
+            background: #ffc107;
+            color: #1e3c72;
+            padding: 0.2rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: bold;
         }
     </style>
     """, unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2 = st.columns([1, 1.5])
     
-    with col2:
+    with col1:
         st.markdown("""
         <div class="purchase-container">
             <div class="purchase-card">
@@ -154,35 +163,134 @@ def show_purchase_page():
             </div>
         </div>
         """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("### 🚀 Get Started")
         
-        with st.form("purchase_form"):
-            st.markdown("### Enter Details to Activate")
-            company_name = st.text_input("Hotel/Company Name *")
-            email = st.text_input("Email Address *")
-            phone = st.text_input("Phone Number *")
-            transaction_id = st.text_input("Transaction ID (after payment)", placeholder="Enter UPI transaction ID")
-            
-            col1, col2 = st.columns(2)
-            with col1:
+        tab1, tab2 = st.tabs(["💰 Purchase Now", "👀 Try Demo"])
+        
+        with tab1:
+            with st.form("purchase_form"):
+                st.markdown("**Enter Details to Activate**")
+                company_name = st.text_input("Hotel/Company Name *")
+                email = st.text_input("Email Address *")
+                phone = st.text_input("Phone Number *")
+                transaction_id = st.text_input("Transaction ID (after payment)", placeholder="Enter UPI transaction ID")
+                
                 if st.form_submit_button("✅ Activate License", type="primary", use_container_width=True):
                     if company_name and email and phone and transaction_id:
-                        # Save license
                         license_data = save_license(company_name, email, phone)
                         st.session_state.licensed = True
                         st.session_state.company_name = company_name
                         st.success(f"✅ License activated for {company_name}!")
-                        st.info(f"License Key: {license_data['license_key']}")
                         st.rerun()
                     else:
                         st.error("Please fill all fields")
-            with col2:
-                st.markdown(f"""
-                <div style="background: #e8f4fd; padding: 1rem; border-radius: 10px; margin-top: 1rem;">
-                    <p><b>📱 Scan to Pay</b></p>
-                    <p>UPI ID: <b>nexatech@okhdfcbank</b></p>
-                    <p>Amount: <b>₹9,999</b></p>
-                </div>
-                """, unsafe_allow_html=True)
+        
+        with tab2:
+            st.markdown("""
+            ### 👀 Try Demo Mode
+            
+            **See how NEXA TECH ERP works before purchasing!**
+            
+            Demo mode gives you:
+            - ✅ Full access to all features
+            - ✅ Sample data pre-loaded
+            - ✅ Test everything freely
+            - ✅ No payment required
+            
+            Demo data includes:
+            - 3 active guests
+            - 5 staff members
+            - Sample inventory
+            - Test bills and reports
+            """)
+            
+            if st.button("🎯 Launch Demo Mode", type="primary", use_container_width=True):
+                # Redirect to demo mode
+                st.query_params.demo = "true"
+                st.rerun()
+
+# ============================================
+# DEMO DATA LOADER
+# ============================================
+
+def load_demo_data():
+    """Load sample demo data for demonstration"""
+    
+    # Demo rooms
+    demo_rooms = [
+        {'id': 101, 'type': 'Deluxe', 'price': 3500, 'status': 'occupied'},
+        {'id': 102, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
+        {'id': 103, 'type': 'Deluxe', 'price': 3500, 'status': 'occupied'},
+        {'id': 104, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
+        {'id': 105, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
+        {'id': 201, 'type': 'Suite', 'price': 5500, 'status': 'occupied'},
+        {'id': 202, 'type': 'Suite', 'price': 5500, 'status': 'available'},
+        {'id': 203, 'type': 'Suite', 'price': 5500, 'status': 'available'},
+        {'id': 301, 'type': 'Presidential', 'price': 9500, 'status': 'available'},
+        {'id': 302, 'type': 'Presidential', 'price': 9500, 'status': 'available'},
+    ]
+    
+    # Demo guests
+    demo_guests = [
+        {'id': 1, 'name': 'Rahul Sharma', 'phone': '9876543210', 'email': 'rahul@example.com', 'address': 'Mumbai', 'last_visit': '2026-03-25', 'total_visits': 3, 'total_spent': 25000},
+        {'id': 2, 'name': 'Priya Singh', 'phone': '8765432109', 'email': 'priya@example.com', 'address': 'Delhi', 'last_visit': '2026-03-20', 'total_visits': 2, 'total_spent': 18000},
+        {'id': 3, 'name': 'Amit Kumar', 'phone': '7654321098', 'email': 'amit@example.com', 'address': 'Bangalore', 'last_visit': '2026-03-15', 'total_visits': 5, 'total_spent': 45000},
+    ]
+    
+    # Demo check-ins
+    demo_checkins = [
+        {'id': 1, 'guest_name': 'Rahul Sharma', 'phone': '9876543210', 'email': 'rahul@example.com', 'address': 'Mumbai', 'room': 101, 'room_type': 'Deluxe', 'room_rate': 3500, 'check_in': '2026-03-27', 'check_out': '2026-03-30', 'nights': 3, 'total': 10500, 'advance': 5000, 'balance': 5500, 'special_requests': 'Extra pillows', 'status': 'active', 'date': '2026-03-27', 'reminder_sent': False},
+        {'id': 2, 'guest_name': 'Vikram Mehta', 'phone': '9988776655', 'email': 'vikram@example.com', 'address': 'Pune', 'room': 103, 'room_type': 'Deluxe', 'room_rate': 3500, 'check_in': '2026-03-28', 'check_out': '2026-03-29', 'nights': 1, 'total': 3500, 'advance': 3500, 'balance': 0, 'special_requests': '', 'status': 'active', 'date': '2026-03-28', 'reminder_sent': False},
+        {'id': 3, 'guest_name': 'Neha Gupta', 'phone': '8877665544', 'email': 'neha@example.com', 'address': 'Jaipur', 'room': 201, 'room_type': 'Suite', 'room_rate': 5500, 'check_in': '2026-03-26', 'check_out': '2026-03-29', 'nights': 3, 'total': 16500, 'advance': 10000, 'balance': 6500, 'special_requests': 'Late check-in', 'status': 'active', 'date': '2026-03-26', 'reminder_sent': False},
+    ]
+    
+    # Demo bills
+    demo_bills = [
+        {'id': 1, 'guest_name': 'Rahul Sharma', 'room': 101, 'room_type': 'Deluxe', 'check_in': '2026-03-20', 'check_out': '2026-03-22', 'room_charges': 7000, 'food_charges': 1200, 'laundry': 300, 'minibar': 0, 'spa': 0, 'misc': 0, 'gst': 1530, 'discount': 0, 'total': 10030, 'date': '2026-03-22'},
+        {'id': 2, 'guest_name': 'Amit Kumar', 'room': 201, 'room_type': 'Suite', 'check_in': '2026-03-18', 'check_out': '2026-03-20', 'room_charges': 11000, 'food_charges': 2500, 'laundry': 500, 'minibar': 800, 'spa': 1500, 'misc': 0, 'gst': 2934, 'discount': 500, 'total': 18734, 'date': '2026-03-20'},
+    ]
+    
+    # Demo staff
+    demo_staff = [
+        {'id': 1, 'name': 'Rajesh Kumar', 'role': 'General Manager', 'salary': 45000, 'joining': '2024-01-15', 'status': 'active'},
+        {'id': 2, 'name': 'Priya Singh', 'role': 'Front Desk Manager', 'salary': 28000, 'joining': '2024-03-10', 'status': 'active'},
+        {'id': 3, 'name': 'Amit Sharma', 'role': 'Housekeeping Supervisor', 'salary': 22000, 'joining': '2024-02-01', 'status': 'active'},
+        {'id': 4, 'name': 'Sunil Verma', 'role': 'Head Chef', 'salary': 35000, 'joining': '2024-01-20', 'status': 'active'},
+        {'id': 5, 'name': 'Vikram Singh', 'role': 'Front Desk Executive', 'salary': 18000, 'joining': '2024-04-15', 'status': 'active'},
+    ]
+    
+    # Demo inventory
+    demo_inventory = [
+        {'item': 'Mineral Water', 'stock': 150, 'unit': 'bottle', 'price': 20},
+        {'item': 'Soap', 'stock': 250, 'unit': 'piece', 'price': 15},
+        {'item': 'Shampoo', 'stock': 180, 'unit': 'bottle', 'price': 25},
+        {'item': 'Towel', 'stock': 75, 'unit': 'piece', 'price': 150},
+        {'item': 'Coffee', 'stock': 80, 'unit': 'packet', 'price': 10},
+        {'item': 'Tea', 'stock': 90, 'unit': 'packet', 'price': 8},
+        {'item': 'Bed Sheet', 'stock': 40, 'unit': 'piece', 'price': 300},
+    ]
+    
+    # Demo vendors
+    demo_vendors = [
+        {'id': 1, 'name': 'Hotel Supplies Co.', 'contact': '9876543210', 'address': 'Mumbai', 'gst': '27AABCU9603R1Z'},
+        {'id': 2, 'name': 'Fresh Foods Pvt Ltd', 'contact': '8765432109', 'address': 'Delhi', 'gst': '07AAACF1234F1Z'},
+        {'id': 3, 'name': 'Linens & More', 'contact': '7654321098', 'address': 'Bangalore', 'gst': '29AAACL1234E1Z'},
+    ]
+    
+    return {
+        'rooms': demo_rooms,
+        'guests': demo_guests,
+        'checkins': demo_checkins,
+        'bills': demo_bills,
+        'inventory': demo_inventory,
+        'purchases': [],
+        'staff': demo_staff,
+        'attendance': [],
+        'salaries_paid': [],
+        'vendors': demo_vendors
+    }
 
 # ============================================
 # MAIN APP (After License)
@@ -211,7 +319,7 @@ def show_main_app():
             color: #ccc;
             margin: 0.5rem 0 0;
         }
-        .nexa-badge {
+        .demo-badge {
             background: #ffc107;
             color: #1e3c72;
             padding: 0.2rem 0.8rem;
@@ -257,12 +365,27 @@ def show_main_app():
     </style>
     """, unsafe_allow_html=True)
     
+    # Show Demo Banner if in demo mode
+    if demo_mode:
+        st.markdown("""
+        <div style="background: #ffc107; color: #1e3c72; padding: 0.5rem; text-align: center; border-radius: 8px; margin-bottom: 1rem;">
+            🔍 DEMO MODE ACTIVE - You're viewing sample data. Purchase to get full access with your own data!
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Also show purchase button
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("💎 Upgrade to Full Version", use_container_width=True):
+                st.query_params.demo = "false"
+                st.rerun()
+    
     # Header
     st.markdown(f"""
     <div class="nexa-header">
         <h1>🏨 NEXA TECH AI POWERED</h1>
         <p>Hotel Enterprise Resource Planning System</p>
-        <span class="nexa-badge">Powered by Artificial Intelligence</span>
+        <span class="demo-badge">Powered by Artificial Intelligence</span>
     </div>
     """, unsafe_allow_html=True)
     
@@ -284,14 +407,24 @@ def show_main_app():
     
     # Sidebar Menu
     with st.sidebar:
-        st.markdown(f"""
-        <div style="text-align: center; padding: 1rem;">
-            <h2>🏨 NEXA TECH</h2>
-            <p style="color: #aaa;">AI Powered ERP</p>
-            <hr>
-            <small>Licensed to: <b>{st.session_state.company_name}</b></small>
-        </div>
-        """, unsafe_allow_html=True)
+        if not demo_mode:
+            st.markdown(f"""
+            <div style="text-align: center; padding: 1rem;">
+                <h2>🏨 NEXA TECH</h2>
+                <p style="color: #aaa;">AI Powered ERP</p>
+                <hr>
+                <small>Licensed to: <b>{st.session_state.company_name}</b></small>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style="text-align: center; padding: 1rem;">
+                <h2>🏨 NEXA TECH</h2>
+                <p style="color: #aaa;">AI Powered ERP</p>
+                <hr>
+                <small style="background: #ffc107; padding: 0.2rem 0.5rem; border-radius: 10px;">🔍 DEMO MODE</small>
+            </div>
+            """, unsafe_allow_html=True)
         
         menu = st.radio(
             "MAIN MENU",
@@ -319,8 +452,10 @@ def show_main_app():
         </div>
         """, unsafe_allow_html=True)
     
-    # Initialize session state
-    if 'hotel_data' not in st.session_state:
+    # Initialize session state with demo data if in demo mode
+    if demo_mode and 'hotel_data' not in st.session_state:
+        st.session_state.hotel_data = load_demo_data()
+    elif 'hotel_data' not in st.session_state:
         st.session_state.hotel_data = {
             'guests': [],
             'rooms': [
@@ -375,7 +510,7 @@ def show_main_app():
         today_revenue = sum(b.get('total', 0) for b in st.session_state.hotel_data['bills'] if b.get('date') == str(datetime.date.today()))
         occupied = len([r for r in st.session_state.hotel_data['rooms'] if r['status'] == 'occupied'])
         total_rooms = len(st.session_state.hotel_data['rooms'])
-        occupancy = (occupied / total_rooms) * 100
+        occupancy = (occupied / total_rooms) * 100 if total_rooms > 0 else 0
         
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -748,6 +883,19 @@ def show_main_app():
             if today_bills:
                 st.dataframe(pd.DataFrame(today_bills), use_container_width=True, hide_index=True)
                 st.metric("Total Today", f"₹{sum(b['total'] for b in today_bills):,}")
+            else:
+                st.info("No bills for today")
+        
+        elif report == "Monthly Revenue":
+            st.markdown("### Monthly Revenue Report")
+            month = st.selectbox("Select Month", ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"])
+            month_num = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].index(month) + 1
+            month_bills = [b for b in st.session_state.hotel_data['bills'] if b.get('date', '').startswith(f"2026-{str(month_num).zfill(2)}")]
+            if month_bills:
+                st.dataframe(pd.DataFrame(month_bills), use_container_width=True, hide_index=True)
+                st.metric(f"Total Revenue - {month}", f"₹{sum(b['total'] for b in month_bills):,}")
+            else:
+                st.info(f"No bills for {month}")
         
         elif report == "Occupancy Report":
             total = len(st.session_state.hotel_data['rooms'])
@@ -807,7 +955,7 @@ def show_main_app():
             st.json({
                 'version': '2.0',
                 'company': 'NEXA TECH AI',
-                'licensed_to': st.session_state.company_name,
+                'licensed_to': st.session_state.company_name if not demo_mode else 'DEMO MODE',
                 'total_rooms': len(st.session_state.hotel_data['rooms']),
                 'total_staff': len(st.session_state.hotel_data['staff']),
                 'total_guests': len(st.session_state.hotel_data['guests'])
@@ -819,13 +967,17 @@ def show_main_app():
 
 # Initialize session state for license
 if 'licensed' not in st.session_state:
-    licensed, company = check_license()
-    st.session_state.licensed = licensed
-    if licensed:
-        st.session_state.company_name = company
+    if not demo_mode:
+        licensed, company = check_license()
+        st.session_state.licensed = licensed
+        if licensed:
+            st.session_state.company_name = company
+    else:
+        st.session_state.licensed = True
+        st.session_state.company_name = "DEMO USER"
 
 # Check license
-if not st.session_state.licensed:
+if not st.session_state.licensed and not demo_mode:
     show_purchase_page()
 else:
     show_main_app()
