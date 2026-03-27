@@ -1,27 +1,187 @@
 import streamlit as st
 import pandas as pd
 import datetime
-import random
 import hashlib
 import json
 import os
-import smtplib
-import requests
 from datetime import timedelta
-import time
 
 # ============================================
 # NEXA TECH AI POWERED HOTEL ERP
 # ENTERPRISE GRADE COMPLETE MANAGEMENT SYSTEM
 # ============================================
 
-# ============================================
-# DEMO MODE CONFIGURATION
-# ============================================
-
 # Check if demo mode is enabled (via URL parameter)
 query_params = st.query_params
 demo_mode = query_params.get("demo", "false") == "true"
+
+# ============================================
+# INITIALIZE SESSION STATE FIRST
+# ============================================
+
+def init_session_state():
+    """Initialize all session state variables"""
+    
+    if 'hotel_data' not in st.session_state:
+        if demo_mode:
+            st.session_state.hotel_data = load_demo_data()
+        else:
+            st.session_state.hotel_data = {
+                'guests': [],
+                'rooms': [
+                    {'id': 101, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
+                    {'id': 102, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
+                    {'id': 103, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
+                    {'id': 104, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
+                    {'id': 105, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
+                    {'id': 201, 'type': 'Suite', 'price': 5500, 'status': 'available'},
+                    {'id': 202, 'type': 'Suite', 'price': 5500, 'status': 'available'},
+                    {'id': 203, 'type': 'Suite', 'price': 5500, 'status': 'available'},
+                    {'id': 301, 'type': 'Presidential', 'price': 9500, 'status': 'available'},
+                    {'id': 302, 'type': 'Presidential', 'price': 9500, 'status': 'available'},
+                ],
+                'checkins': [],
+                'bills': [],
+                'inventory': [
+                    {'item': 'Mineral Water', 'stock': 200, 'unit': 'bottle', 'price': 20},
+                    {'item': 'Soap', 'stock': 300, 'unit': 'piece', 'price': 15},
+                    {'item': 'Shampoo', 'stock': 200, 'unit': 'bottle', 'price': 25},
+                    {'item': 'Towel', 'stock': 100, 'unit': 'piece', 'price': 150},
+                    {'item': 'Coffee', 'stock': 100, 'unit': 'packet', 'price': 10},
+                    {'item': 'Tea', 'stock': 100, 'unit': 'packet', 'price': 8},
+                    {'item': 'Bed Sheet', 'stock': 50, 'unit': 'piece', 'price': 300},
+                ],
+                'purchases': [],
+                'staff': [
+                    {'id': 1, 'name': 'Rajesh Kumar', 'role': 'General Manager', 'salary': 45000, 'joining': '2024-01-15', 'status': 'active'},
+                    {'id': 2, 'name': 'Priya Singh', 'role': 'Front Desk Manager', 'salary': 28000, 'joining': '2024-03-10', 'status': 'active'},
+                    {'id': 3, 'name': 'Amit Sharma', 'role': 'Housekeeping Supervisor', 'salary': 22000, 'joining': '2024-02-01', 'status': 'active'},
+                    {'id': 4, 'name': 'Sunil Verma', 'role': 'Head Chef', 'salary': 35000, 'joining': '2024-01-20', 'status': 'active'},
+                    {'id': 5, 'name': 'Vikram Singh', 'role': 'Front Desk Executive', 'salary': 18000, 'joining': '2024-04-15', 'status': 'active'},
+                    {'id': 6, 'name': 'Meera Patel', 'role': 'Housekeeping Staff', 'salary': 15000, 'joining': '2024-03-01', 'status': 'active'},
+                    {'id': 7, 'name': 'Ravi Kumar', 'role': 'Restaurant Staff', 'salary': 16000, 'joining': '2024-04-10', 'status': 'active'},
+                    {'id': 8, 'name': 'Anjali Sharma', 'role': 'Accountant', 'salary': 25000, 'joining': '2024-02-15', 'status': 'active'},
+                ],
+                'attendance': [],
+                'salaries_paid': [],
+                'vendors': [
+                    {'id': 1, 'name': 'Hotel Supplies Co.', 'contact': '9876543210', 'address': 'Mumbai', 'gst': '27AABCU9603R1Z'},
+                    {'id': 2, 'name': 'Fresh Foods Pvt Ltd', 'contact': '8765432109', 'address': 'Delhi', 'gst': '07AAACF1234F1Z'},
+                    {'id': 3, 'name': 'Linens & More', 'contact': '7654321098', 'address': 'Bangalore', 'gst': '29AAACL1234E1Z'},
+                ]
+            }
+    
+    if 'reminders_sent' not in st.session_state:
+        st.session_state.reminders_sent = []
+    
+    if 'licensed' not in st.session_state:
+        st.session_state.licensed = demo_mode
+        st.session_state.company_name = "DEMO USER" if demo_mode else ""
+
+# ============================================
+# DEMO DATA LOADER
+# ============================================
+
+def load_demo_data():
+    """Load sample demo data for demonstration"""
+    
+    demo_rooms = [
+        {'id': 101, 'type': 'Deluxe', 'price': 3500, 'status': 'occupied'},
+        {'id': 102, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
+        {'id': 103, 'type': 'Deluxe', 'price': 3500, 'status': 'occupied'},
+        {'id': 104, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
+        {'id': 105, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
+        {'id': 201, 'type': 'Suite', 'price': 5500, 'status': 'occupied'},
+        {'id': 202, 'type': 'Suite', 'price': 5500, 'status': 'available'},
+        {'id': 203, 'type': 'Suite', 'price': 5500, 'status': 'available'},
+        {'id': 301, 'type': 'Presidential', 'price': 9500, 'status': 'available'},
+        {'id': 302, 'type': 'Presidential', 'price': 9500, 'status': 'available'},
+    ]
+    
+    demo_guests = [
+        {'id': 1, 'name': 'Rahul Sharma', 'phone': '9876543210', 'email': 'rahul@example.com', 'address': 'Mumbai', 'last_visit': '2026-03-25', 'total_visits': 3, 'total_spent': 25000},
+        {'id': 2, 'name': 'Priya Singh', 'phone': '8765432109', 'email': 'priya@example.com', 'address': 'Delhi', 'last_visit': '2026-03-20', 'total_visits': 2, 'total_spent': 18000},
+        {'id': 3, 'name': 'Amit Kumar', 'phone': '7654321098', 'email': 'amit@example.com', 'address': 'Bangalore', 'last_visit': '2026-03-15', 'total_visits': 5, 'total_spent': 45000},
+    ]
+    
+    demo_checkins = [
+        {'id': 1, 'guest_name': 'Rahul Sharma', 'phone': '9876543210', 'email': 'rahul@example.com', 'address': 'Mumbai', 'room': 101, 'room_type': 'Deluxe', 'room_rate': 3500, 'check_in': '2026-03-27', 'check_out': '2026-03-30', 'nights': 3, 'total': 10500, 'advance': 5000, 'balance': 5500, 'special_requests': 'Extra pillows', 'status': 'active', 'date': '2026-03-27', 'reminder_sent': False},
+        {'id': 2, 'guest_name': 'Vikram Mehta', 'phone': '9988776655', 'email': 'vikram@example.com', 'address': 'Pune', 'room': 103, 'room_type': 'Deluxe', 'room_rate': 3500, 'check_in': '2026-03-28', 'check_out': '2026-03-29', 'nights': 1, 'total': 3500, 'advance': 3500, 'balance': 0, 'special_requests': '', 'status': 'active', 'date': '2026-03-28', 'reminder_sent': False},
+        {'id': 3, 'guest_name': 'Neha Gupta', 'phone': '8877665544', 'email': 'neha@example.com', 'address': 'Jaipur', 'room': 201, 'room_type': 'Suite', 'room_rate': 5500, 'check_in': '2026-03-26', 'check_out': '2026-03-29', 'nights': 3, 'total': 16500, 'advance': 10000, 'balance': 6500, 'special_requests': 'Late check-in', 'status': 'active', 'date': '2026-03-26', 'reminder_sent': False},
+    ]
+    
+    demo_bills = [
+        {'id': 1, 'guest_name': 'Rahul Sharma', 'room': 101, 'room_type': 'Deluxe', 'check_in': '2026-03-20', 'check_out': '2026-03-22', 'room_charges': 7000, 'food_charges': 1200, 'laundry': 300, 'minibar': 0, 'spa': 0, 'misc': 0, 'gst': 1530, 'discount': 0, 'total': 10030, 'date': '2026-03-22'},
+        {'id': 2, 'guest_name': 'Amit Kumar', 'room': 201, 'room_type': 'Suite', 'check_in': '2026-03-18', 'check_out': '2026-03-20', 'room_charges': 11000, 'food_charges': 2500, 'laundry': 500, 'minibar': 800, 'spa': 1500, 'misc': 0, 'gst': 2934, 'discount': 500, 'total': 18734, 'date': '2026-03-20'},
+    ]
+    
+    demo_staff = [
+        {'id': 1, 'name': 'Rajesh Kumar', 'role': 'General Manager', 'salary': 45000, 'joining': '2024-01-15', 'status': 'active'},
+        {'id': 2, 'name': 'Priya Singh', 'role': 'Front Desk Manager', 'salary': 28000, 'joining': '2024-03-10', 'status': 'active'},
+        {'id': 3, 'name': 'Amit Sharma', 'role': 'Housekeeping Supervisor', 'salary': 22000, 'joining': '2024-02-01', 'status': 'active'},
+        {'id': 4, 'name': 'Sunil Verma', 'role': 'Head Chef', 'salary': 35000, 'joining': '2024-01-20', 'status': 'active'},
+        {'id': 5, 'name': 'Vikram Singh', 'role': 'Front Desk Executive', 'salary': 18000, 'joining': '2024-04-15', 'status': 'active'},
+    ]
+    
+    demo_inventory = [
+        {'item': 'Mineral Water', 'stock': 150, 'unit': 'bottle', 'price': 20},
+        {'item': 'Soap', 'stock': 250, 'unit': 'piece', 'price': 15},
+        {'item': 'Shampoo', 'stock': 180, 'unit': 'bottle', 'price': 25},
+        {'item': 'Towel', 'stock': 75, 'unit': 'piece', 'price': 150},
+        {'item': 'Coffee', 'stock': 80, 'unit': 'packet', 'price': 10},
+        {'item': 'Tea', 'stock': 90, 'unit': 'packet', 'price': 8},
+        {'item': 'Bed Sheet', 'stock': 40, 'unit': 'piece', 'price': 300},
+    ]
+    
+    demo_vendors = [
+        {'id': 1, 'name': 'Hotel Supplies Co.', 'contact': '9876543210', 'address': 'Mumbai', 'gst': '27AABCU9603R1Z'},
+        {'id': 2, 'name': 'Fresh Foods Pvt Ltd', 'contact': '8765432109', 'address': 'Delhi', 'gst': '07AAACF1234F1Z'},
+        {'id': 3, 'name': 'Linens & More', 'contact': '7654321098', 'address': 'Bangalore', 'gst': '29AAACL1234E1Z'},
+    ]
+    
+    return {
+        'rooms': demo_rooms,
+        'guests': demo_guests,
+        'checkins': demo_checkins,
+        'bills': demo_bills,
+        'inventory': demo_inventory,
+        'purchases': [],
+        'staff': demo_staff,
+        'attendance': [],
+        'salaries_paid': [],
+        'vendors': demo_vendors
+    }
+
+# ============================================
+# REMINDER SYSTEM
+# ============================================
+
+def send_reminder(guest_name, phone, check_out_date):
+    """Send automatic reminder to guest"""
+    reminder_data = {
+        'guest': guest_name,
+        'phone': phone,
+        'check_out': check_out_date,
+        'message': f"Dear {guest_name}, Thank you for staying at NEXA TECH HOTEL. Your check-out is on {check_out_date}. We hope you enjoyed your stay!",
+        'sent_at': datetime.datetime.now().isoformat()
+    }
+    st.session_state.reminders_sent.append(reminder_data)
+    return True
+
+def check_auto_reminders():
+    """Auto check and send reminders for upcoming check-outs"""
+    if 'hotel_data' not in st.session_state:
+        return
+    
+    today = datetime.date.today()
+    tomorrow = today + timedelta(days=1)
+    
+    for guest in st.session_state.hotel_data.get('checkins', []):
+        if guest.get('status') == 'active':
+            check_out = datetime.datetime.strptime(guest['check_out'], '%Y-%m-%d').date()
+            if check_out == tomorrow and not guest.get('reminder_sent', False):
+                send_reminder(guest['guest_name'], guest['phone'], guest['check_out'])
+                guest['reminder_sent'] = True
 
 # ============================================
 # LICENSE SYSTEM
@@ -38,11 +198,9 @@ def check_license():
                 expiry = datetime.datetime.fromisoformat(data['expiry'])
                 if expiry > datetime.datetime.now():
                     return True, data['company_name']
-                else:
-                    return False, "License expired"
         except:
-            return False, "Invalid license"
-    return False, "No license found"
+            pass
+    return False, ""
 
 def save_license(company_name, email, phone):
     """Save license after purchase"""
@@ -59,41 +217,7 @@ def save_license(company_name, email, phone):
     return license_data
 
 # ============================================
-# REMINDER SYSTEM
-# ============================================
-
-def send_reminder(guest_name, phone, check_out_date):
-    """Send automatic reminder to guest"""
-    try:
-        reminder_data = {
-            'guest': guest_name,
-            'phone': phone,
-            'check_out': check_out_date,
-            'message': f"Dear {guest_name}, Thank you for staying at NEXA TECH HOTEL. Your check-out is on {check_out_date}. We hope you enjoyed your stay!",
-            'sent_at': datetime.datetime.now().isoformat()
-        }
-        
-        if 'reminders_sent' not in st.session_state:
-            st.session_state.reminders_sent = []
-        st.session_state.reminders_sent.append(reminder_data)
-        return True
-    except:
-        return False
-
-def check_auto_reminders():
-    """Auto check and send reminders for upcoming check-outs"""
-    today = datetime.date.today()
-    tomorrow = today + timedelta(days=1)
-    
-    for guest in st.session_state.hotel_data['checkins']:
-        if guest.get('status') == 'active':
-            check_out = datetime.datetime.strptime(guest['check_out'], '%Y-%m-%d').date()
-            if check_out == tomorrow:
-                send_reminder(guest['guest_name'], guest['phone'], guest['check_out'])
-                guest['reminder_sent'] = True
-
-# ============================================
-# PURCHASE PAGE (WITH DEMO MODE)
+# PURCHASE PAGE
 # ============================================
 
 def show_purchase_page():
@@ -106,7 +230,6 @@ def show_purchase_page():
             padding: 1.5rem;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
         .purchase-card {
             background: white;
@@ -125,14 +248,6 @@ def show_purchase_page():
             background: #f8f9fa;
             border-radius: 8px;
             text-align: left;
-        }
-        .demo-badge {
-            background: #ffc107;
-            color: #1e3c72;
-            padding: 0.2rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: bold;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -156,7 +271,6 @@ def show_purchase_page():
                 <div class="feature">✅ Auto Customer Reminders</div>
                 <div class="feature">✅ Purchase Orders</div>
                 <div class="feature">✅ Real-time Reports</div>
-                <div class="feature">✅ 24/7 AI Support</div>
                 <hr>
                 <p><b>UPI ID:</b> nexatech@okhdfcbank</p>
                 <p><b>Phone:</b> 8439049681</p>
@@ -179,7 +293,7 @@ def show_purchase_page():
                 
                 if st.form_submit_button("✅ Activate License", type="primary", use_container_width=True):
                     if company_name and email and phone and transaction_id:
-                        license_data = save_license(company_name, email, phone)
+                        save_license(company_name, email, phone)
                         st.session_state.licensed = True
                         st.session_state.company_name = company_name
                         st.success(f"✅ License activated for {company_name}!")
@@ -198,108 +312,20 @@ def show_purchase_page():
             - ✅ Sample data pre-loaded
             - ✅ Test everything freely
             - ✅ No payment required
-            
-            Demo data includes:
-            - 3 active guests
-            - 5 staff members
-            - Sample inventory
-            - Test bills and reports
             """)
             
             if st.button("🎯 Launch Demo Mode", type="primary", use_container_width=True):
-                # Redirect to demo mode
                 st.query_params.demo = "true"
                 st.rerun()
 
 # ============================================
-# DEMO DATA LOADER
-# ============================================
-
-def load_demo_data():
-    """Load sample demo data for demonstration"""
-    
-    # Demo rooms
-    demo_rooms = [
-        {'id': 101, 'type': 'Deluxe', 'price': 3500, 'status': 'occupied'},
-        {'id': 102, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
-        {'id': 103, 'type': 'Deluxe', 'price': 3500, 'status': 'occupied'},
-        {'id': 104, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
-        {'id': 105, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
-        {'id': 201, 'type': 'Suite', 'price': 5500, 'status': 'occupied'},
-        {'id': 202, 'type': 'Suite', 'price': 5500, 'status': 'available'},
-        {'id': 203, 'type': 'Suite', 'price': 5500, 'status': 'available'},
-        {'id': 301, 'type': 'Presidential', 'price': 9500, 'status': 'available'},
-        {'id': 302, 'type': 'Presidential', 'price': 9500, 'status': 'available'},
-    ]
-    
-    # Demo guests
-    demo_guests = [
-        {'id': 1, 'name': 'Rahul Sharma', 'phone': '9876543210', 'email': 'rahul@example.com', 'address': 'Mumbai', 'last_visit': '2026-03-25', 'total_visits': 3, 'total_spent': 25000},
-        {'id': 2, 'name': 'Priya Singh', 'phone': '8765432109', 'email': 'priya@example.com', 'address': 'Delhi', 'last_visit': '2026-03-20', 'total_visits': 2, 'total_spent': 18000},
-        {'id': 3, 'name': 'Amit Kumar', 'phone': '7654321098', 'email': 'amit@example.com', 'address': 'Bangalore', 'last_visit': '2026-03-15', 'total_visits': 5, 'total_spent': 45000},
-    ]
-    
-    # Demo check-ins
-    demo_checkins = [
-        {'id': 1, 'guest_name': 'Rahul Sharma', 'phone': '9876543210', 'email': 'rahul@example.com', 'address': 'Mumbai', 'room': 101, 'room_type': 'Deluxe', 'room_rate': 3500, 'check_in': '2026-03-27', 'check_out': '2026-03-30', 'nights': 3, 'total': 10500, 'advance': 5000, 'balance': 5500, 'special_requests': 'Extra pillows', 'status': 'active', 'date': '2026-03-27', 'reminder_sent': False},
-        {'id': 2, 'guest_name': 'Vikram Mehta', 'phone': '9988776655', 'email': 'vikram@example.com', 'address': 'Pune', 'room': 103, 'room_type': 'Deluxe', 'room_rate': 3500, 'check_in': '2026-03-28', 'check_out': '2026-03-29', 'nights': 1, 'total': 3500, 'advance': 3500, 'balance': 0, 'special_requests': '', 'status': 'active', 'date': '2026-03-28', 'reminder_sent': False},
-        {'id': 3, 'guest_name': 'Neha Gupta', 'phone': '8877665544', 'email': 'neha@example.com', 'address': 'Jaipur', 'room': 201, 'room_type': 'Suite', 'room_rate': 5500, 'check_in': '2026-03-26', 'check_out': '2026-03-29', 'nights': 3, 'total': 16500, 'advance': 10000, 'balance': 6500, 'special_requests': 'Late check-in', 'status': 'active', 'date': '2026-03-26', 'reminder_sent': False},
-    ]
-    
-    # Demo bills
-    demo_bills = [
-        {'id': 1, 'guest_name': 'Rahul Sharma', 'room': 101, 'room_type': 'Deluxe', 'check_in': '2026-03-20', 'check_out': '2026-03-22', 'room_charges': 7000, 'food_charges': 1200, 'laundry': 300, 'minibar': 0, 'spa': 0, 'misc': 0, 'gst': 1530, 'discount': 0, 'total': 10030, 'date': '2026-03-22'},
-        {'id': 2, 'guest_name': 'Amit Kumar', 'room': 201, 'room_type': 'Suite', 'check_in': '2026-03-18', 'check_out': '2026-03-20', 'room_charges': 11000, 'food_charges': 2500, 'laundry': 500, 'minibar': 800, 'spa': 1500, 'misc': 0, 'gst': 2934, 'discount': 500, 'total': 18734, 'date': '2026-03-20'},
-    ]
-    
-    # Demo staff
-    demo_staff = [
-        {'id': 1, 'name': 'Rajesh Kumar', 'role': 'General Manager', 'salary': 45000, 'joining': '2024-01-15', 'status': 'active'},
-        {'id': 2, 'name': 'Priya Singh', 'role': 'Front Desk Manager', 'salary': 28000, 'joining': '2024-03-10', 'status': 'active'},
-        {'id': 3, 'name': 'Amit Sharma', 'role': 'Housekeeping Supervisor', 'salary': 22000, 'joining': '2024-02-01', 'status': 'active'},
-        {'id': 4, 'name': 'Sunil Verma', 'role': 'Head Chef', 'salary': 35000, 'joining': '2024-01-20', 'status': 'active'},
-        {'id': 5, 'name': 'Vikram Singh', 'role': 'Front Desk Executive', 'salary': 18000, 'joining': '2024-04-15', 'status': 'active'},
-    ]
-    
-    # Demo inventory
-    demo_inventory = [
-        {'item': 'Mineral Water', 'stock': 150, 'unit': 'bottle', 'price': 20},
-        {'item': 'Soap', 'stock': 250, 'unit': 'piece', 'price': 15},
-        {'item': 'Shampoo', 'stock': 180, 'unit': 'bottle', 'price': 25},
-        {'item': 'Towel', 'stock': 75, 'unit': 'piece', 'price': 150},
-        {'item': 'Coffee', 'stock': 80, 'unit': 'packet', 'price': 10},
-        {'item': 'Tea', 'stock': 90, 'unit': 'packet', 'price': 8},
-        {'item': 'Bed Sheet', 'stock': 40, 'unit': 'piece', 'price': 300},
-    ]
-    
-    # Demo vendors
-    demo_vendors = [
-        {'id': 1, 'name': 'Hotel Supplies Co.', 'contact': '9876543210', 'address': 'Mumbai', 'gst': '27AABCU9603R1Z'},
-        {'id': 2, 'name': 'Fresh Foods Pvt Ltd', 'contact': '8765432109', 'address': 'Delhi', 'gst': '07AAACF1234F1Z'},
-        {'id': 3, 'name': 'Linens & More', 'contact': '7654321098', 'address': 'Bangalore', 'gst': '29AAACL1234E1Z'},
-    ]
-    
-    return {
-        'rooms': demo_rooms,
-        'guests': demo_guests,
-        'checkins': demo_checkins,
-        'bills': demo_bills,
-        'inventory': demo_inventory,
-        'purchases': [],
-        'staff': demo_staff,
-        'attendance': [],
-        'salaries_paid': [],
-        'vendors': demo_vendors
-    }
-
-# ============================================
-# MAIN APP (After License)
+# MAIN APP UI
 # ============================================
 
 def show_main_app():
     """Main Hotel ERP Application"""
     
-    # NEXA TECH Header
+    # CSS
     st.markdown("""
     <style>
         .nexa-header {
@@ -308,16 +334,11 @@ def show_main_app():
             border-radius: 15px;
             margin-bottom: 1.5rem;
             text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
         .nexa-header h1 {
             color: white;
             margin: 0;
             font-size: 2rem;
-        }
-        .nexa-header p {
-            color: #ccc;
-            margin: 0.5rem 0 0;
         }
         .demo-badge {
             background: #ffc107;
@@ -347,13 +368,6 @@ def show_main_app():
             margin: 0.5rem 0;
             border-left: 4px solid #2a5298;
         }
-        .reminder-box {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 0.8rem;
-            border-radius: 8px;
-            margin: 0.5rem 0;
-        }
         .footer {
             text-align: center;
             color: #666;
@@ -365,7 +379,7 @@ def show_main_app():
     </style>
     """, unsafe_allow_html=True)
     
-    # Show Demo Banner if in demo mode
+    # Demo banner
     if demo_mode:
         st.markdown("""
         <div style="background: #ffc107; color: #1e3c72; padding: 0.5rem; text-align: center; border-radius: 8px; margin-bottom: 1rem;">
@@ -373,7 +387,6 @@ def show_main_app():
         </div>
         """, unsafe_allow_html=True)
         
-        # Also show purchase button
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             if st.button("💎 Upgrade to Full Version", use_container_width=True):
@@ -389,21 +402,14 @@ def show_main_app():
     </div>
     """, unsafe_allow_html=True)
     
-    # Check for auto reminders
+    # Check reminders
     check_auto_reminders()
     
     # Show reminders if any
-    if 'reminders_sent' in st.session_state and st.session_state.reminders_sent:
+    if st.session_state.reminders_sent:
         with st.expander("📱 Recent Reminders Sent"):
             for r in st.session_state.reminders_sent[-5:]:
-                st.markdown(f"""
-                <div class="reminder-box">
-                    <b>📨 To:</b> {r['guest']}<br>
-                    <b>📞 Phone:</b> {r['phone']}<br>
-                    <b>📅 Check-out:</b> {r['check_out']}<br>
-                    <b>💬 Message:</b> {r['message'][:50]}...
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"📨 To: {r['guest']} | 📞 Phone: {r['phone']} | 📅 Check-out: {r['check_out']}")
     
     # Sidebar Menu
     with st.sidebar:
@@ -452,64 +458,16 @@ def show_main_app():
         </div>
         """, unsafe_allow_html=True)
     
-    # Initialize session state with demo data if in demo mode
-    if demo_mode and 'hotel_data' not in st.session_state:
-        st.session_state.hotel_data = load_demo_data()
-    elif 'hotel_data' not in st.session_state:
-        st.session_state.hotel_data = {
-            'guests': [],
-            'rooms': [
-                {'id': 101, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
-                {'id': 102, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
-                {'id': 103, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
-                {'id': 104, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
-                {'id': 105, 'type': 'Deluxe', 'price': 3500, 'status': 'available'},
-                {'id': 201, 'type': 'Suite', 'price': 5500, 'status': 'available'},
-                {'id': 202, 'type': 'Suite', 'price': 5500, 'status': 'available'},
-                {'id': 203, 'type': 'Suite', 'price': 5500, 'status': 'available'},
-                {'id': 301, 'type': 'Presidential', 'price': 9500, 'status': 'available'},
-                {'id': 302, 'type': 'Presidential', 'price': 9500, 'status': 'available'},
-            ],
-            'checkins': [],
-            'bills': [],
-            'inventory': [
-                {'item': 'Mineral Water', 'stock': 200, 'unit': 'bottle', 'price': 20},
-                {'item': 'Soap', 'stock': 300, 'unit': 'piece', 'price': 15},
-                {'item': 'Shampoo', 'stock': 200, 'unit': 'bottle', 'price': 25},
-                {'item': 'Towel', 'stock': 100, 'unit': 'piece', 'price': 150},
-                {'item': 'Coffee', 'stock': 100, 'unit': 'packet', 'price': 10},
-                {'item': 'Tea', 'stock': 100, 'unit': 'packet', 'price': 8},
-                {'item': 'Bed Sheet', 'stock': 50, 'unit': 'piece', 'price': 300},
-            ],
-            'purchases': [],
-            'staff': [
-                {'id': 1, 'name': 'Rajesh Kumar', 'role': 'General Manager', 'salary': 45000, 'joining': '2024-01-15', 'status': 'active'},
-                {'id': 2, 'name': 'Priya Singh', 'role': 'Front Desk Manager', 'salary': 28000, 'joining': '2024-03-10', 'status': 'active'},
-                {'id': 3, 'name': 'Amit Sharma', 'role': 'Housekeeping Supervisor', 'salary': 22000, 'joining': '2024-02-01', 'status': 'active'},
-                {'id': 4, 'name': 'Sunil Verma', 'role': 'Head Chef', 'salary': 35000, 'joining': '2024-01-20', 'status': 'active'},
-                {'id': 5, 'name': 'Vikram Singh', 'role': 'Front Desk Executive', 'salary': 18000, 'joining': '2024-04-15', 'status': 'active'},
-                {'id': 6, 'name': 'Meera Patel', 'role': 'Housekeeping Staff', 'salary': 15000, 'joining': '2024-03-01', 'status': 'active'},
-                {'id': 7, 'name': 'Ravi Kumar', 'role': 'Restaurant Staff', 'salary': 16000, 'joining': '2024-04-10', 'status': 'active'},
-                {'id': 8, 'name': 'Anjali Sharma', 'role': 'Accountant', 'salary': 25000, 'joining': '2024-02-15', 'status': 'active'},
-            ],
-            'attendance': [],
-            'salaries_paid': [],
-            'vendors': [
-                {'id': 1, 'name': 'Hotel Supplies Co.', 'contact': '9876543210', 'address': 'Mumbai', 'gst': '27AABCU9603R1Z'},
-                {'id': 2, 'name': 'Fresh Foods Pvt Ltd', 'contact': '8765432109', 'address': 'Delhi', 'gst': '07AAACF1234F1Z'},
-                {'id': 3, 'name': 'Linens & More', 'contact': '7654321098', 'address': 'Bangalore', 'gst': '29AAACL1234E1Z'},
-            ]
-        }
-    
     # ============================================
     # DASHBOARD
     # ============================================
     if menu == "🏠 Dashboard":
-        active_guests = len([c for c in st.session_state.hotel_data['checkins'] if c.get('status') == 'active'])
-        today_checkins = len([c for c in st.session_state.hotel_data['checkins'] if c.get('date') == str(datetime.date.today())])
-        today_revenue = sum(b.get('total', 0) for b in st.session_state.hotel_data['bills'] if b.get('date') == str(datetime.date.today()))
-        occupied = len([r for r in st.session_state.hotel_data['rooms'] if r['status'] == 'occupied'])
-        total_rooms = len(st.session_state.hotel_data['rooms'])
+        data = st.session_state.hotel_data
+        active_guests = len([c for c in data['checkins'] if c.get('status') == 'active'])
+        today_checkins = len([c for c in data['checkins'] if c.get('date') == str(datetime.date.today())])
+        today_revenue = sum(b.get('total', 0) for b in data['bills'] if b.get('date') == str(datetime.date.today()))
+        occupied = len([r for r in data['rooms'] if r['status'] == 'occupied'])
+        total_rooms = len(data['rooms'])
         occupancy = (occupied / total_rooms) * 100 if total_rooms > 0 else 0
         
         col1, col2, col3, col4 = st.columns(4)
@@ -527,7 +485,7 @@ def show_main_app():
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("### 🧾 Recent Check-ins")
-            recent = st.session_state.hotel_data['checkins'][-5:]
+            recent = data['checkins'][-5:]
             if recent:
                 st.dataframe(pd.DataFrame(recent)[['guest_name', 'room', 'check_in', 'nights']], use_container_width=True, hide_index=True)
             else:
@@ -535,14 +493,14 @@ def show_main_app():
         
         with col2:
             st.markdown("### 📋 Room Status")
-            room_df = pd.DataFrame(st.session_state.hotel_data['rooms'])
-            st.dataframe(room_df, use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(data['rooms']), use_container_width=True, hide_index=True)
     
     # ============================================
     # CHECK-IN
     # ============================================
     elif menu == "📝 Check-in":
         st.markdown("## 📝 New Guest Check-in")
+        data = st.session_state.hotel_data
         
         col1, col2 = st.columns(2)
         
@@ -553,7 +511,7 @@ def show_main_app():
             address = st.text_area("Address")
         
         with col2:
-            available_rooms = [r for r in st.session_state.hotel_data['rooms'] if r['status'] == 'available']
+            available_rooms = [r for r in data['rooms'] if r['status'] == 'available']
             if available_rooms:
                 room_options = {f"{r['id']} - {r['type']} (₹{r['price']}/night)": r for r in available_rooms}
                 selected_room = st.selectbox("Select Room", list(room_options.keys()))
@@ -576,7 +534,7 @@ def show_main_app():
         if st.button("✅ Confirm Check-in", type="primary", use_container_width=True):
             if guest_name and phone and room:
                 checkin_data = {
-                    'id': len(st.session_state.hotel_data['checkins']) + 1,
+                    'id': len(data['checkins']) + 1,
                     'guest_name': guest_name,
                     'phone': phone,
                     'email': email,
@@ -595,16 +553,14 @@ def show_main_app():
                     'date': str(datetime.date.today()),
                     'reminder_sent': False
                 }
-                st.session_state.hotel_data['checkins'].append(checkin_data)
+                data['checkins'].append(checkin_data)
                 
-                # Update room
-                for r in st.session_state.hotel_data['rooms']:
+                for r in data['rooms']:
                     if r['id'] == room['id']:
                         r['status'] = 'occupied'
                 
-                # Add to guests
                 guest_data = {
-                    'id': len(st.session_state.hotel_data['guests']) + 1,
+                    'id': len(data['guests']) + 1,
                     'name': guest_name,
                     'phone': phone,
                     'email': email,
@@ -613,7 +569,7 @@ def show_main_app():
                     'total_visits': 1,
                     'total_spent': total
                 }
-                st.session_state.hotel_data['guests'].append(guest_data)
+                data['guests'].append(guest_data)
                 
                 st.success(f"✅ {guest_name} checked in successfully!")
                 st.balloons()
@@ -625,8 +581,9 @@ def show_main_app():
     # ============================================
     elif menu == "🧾 Check-out & Billing":
         st.markdown("## 🧾 Check-out & Generate Bill")
+        data = st.session_state.hotel_data
         
-        active_guests = [c for c in st.session_state.hotel_data['checkins'] if c.get('status') == 'active']
+        active_guests = [c for c in data['checkins'] if c.get('status') == 'active']
         
         if active_guests:
             guest_options = {f"{g['guest_name']} - Room {g['room']}": g for g in active_guests}
@@ -663,7 +620,7 @@ def show_main_app():
             
             if st.button("💰 Generate Final Bill", type="primary", use_container_width=True):
                 bill_data = {
-                    'id': len(st.session_state.hotel_data['bills']) + 1,
+                    'id': len(data['bills']) + 1,
                     'guest_name': guest['guest_name'],
                     'room': guest['room'],
                     'room_type': guest['room_type'],
@@ -680,21 +637,18 @@ def show_main_app():
                     'total': total,
                     'date': str(datetime.date.today())
                 }
-                st.session_state.hotel_data['bills'].append(bill_data)
+                data['bills'].append(bill_data)
                 
-                # Update status
-                for c in st.session_state.hotel_data['checkins']:
+                for c in data['checkins']:
                     if c['id'] == guest['id']:
                         c['status'] = 'checked_out'
                 
-                # Update room
-                for r in st.session_state.hotel_data['rooms']:
+                for r in data['rooms']:
                     if r['id'] == guest['room']:
                         r['status'] = 'available'
                 
                 st.success(f"✅ Bill generated for {guest['guest_name']}")
                 
-                # Show bill
                 st.markdown(f"""
                 <div style="background: #e8f4fd; padding: 1.5rem; border-radius: 12px; margin-top: 1rem;">
                     <h3 style="text-align: center;">🏨 NEXA TECH HOTEL</h3>
@@ -714,7 +668,7 @@ def show_main_app():
                     <p><b>Discount:</b> -₹{discount:,}</p>
                     <hr>
                     <h3 style="text-align: right;">Total: ₹{total:,.0f}</h3>
-                    <p style="text-align: center; font-size: 0.8rem;">Thank you for choosing NEXA TECH</p>
+                    <p style="text-align: center;">Thank you for choosing NEXA TECH</p>
                 </div>
                 """, unsafe_allow_html=True)
         else:
@@ -725,16 +679,15 @@ def show_main_app():
     # ============================================
     elif menu == "👥 Guest Records":
         st.markdown("## 👥 Guest Records")
+        data = st.session_state.hotel_data
         
-        if st.session_state.hotel_data['guests']:
-            df = pd.DataFrame(st.session_state.hotel_data['guests'])
-            st.dataframe(df, use_container_width=True, hide_index=True)
+        if data['guests']:
+            st.dataframe(pd.DataFrame(data['guests']), use_container_width=True, hide_index=True)
             
             st.markdown("### 🔍 Search Guest")
             search = st.text_input("Enter name or phone")
             if search:
-                results = [g for g in st.session_state.hotel_data['guests'] 
-                          if search.lower() in g['name'].lower() or search in g['phone']]
+                results = [g for g in data['guests'] if search.lower() in g['name'].lower() or search in g['phone']]
                 if results:
                     st.dataframe(pd.DataFrame(results), use_container_width=True, hide_index=True)
         else:
@@ -745,26 +698,25 @@ def show_main_app():
     # ============================================
     elif menu == "🛍️ Inventory":
         st.markdown("## 🛍️ Inventory Management")
+        data = st.session_state.hotel_data
         
         tab1, tab2 = st.tabs(["📦 Current Stock", "📝 Update Stock"])
         
         with tab1:
-            df = pd.DataFrame(st.session_state.hotel_data['inventory'])
-            st.dataframe(df, use_container_width=True, hide_index=True)
-            
-            low_stock = [i for i in st.session_state.hotel_data['inventory'] if i['stock'] < 50]
+            st.dataframe(pd.DataFrame(data['inventory']), use_container_width=True, hide_index=True)
+            low_stock = [i for i in data['inventory'] if i['stock'] < 50]
             if low_stock:
                 st.warning(f"⚠️ {len(low_stock)} items are low on stock!")
         
         with tab2:
             col1, col2 = st.columns(2)
             with col1:
-                item = st.selectbox("Select Item", [i['item'] for i in st.session_state.hotel_data['inventory']])
+                item = st.selectbox("Select Item", [i['item'] for i in data['inventory']])
             with col2:
                 quantity = st.number_input("Quantity to Add", min_value=1, value=10)
             
             if st.button("✅ Update Stock"):
-                for i in st.session_state.hotel_data['inventory']:
+                for i in data['inventory']:
                     if i['item'] == item:
                         i['stock'] += quantity
                         st.success(f"✅ Added {quantity} to {item}")
@@ -774,15 +726,16 @@ def show_main_app():
     # ============================================
     elif menu == "📦 Purchase Orders":
         st.markdown("## 📦 Purchase Orders")
+        data = st.session_state.hotel_data
         
         tab1, tab2 = st.tabs(["➕ New Order", "📋 Order History"])
         
         with tab1:
             col1, col2 = st.columns(2)
             with col1:
-                vendor = st.selectbox("Vendor", [v['name'] for v in st.session_state.hotel_data['vendors']])
+                vendor = st.selectbox("Vendor", [v['name'] for v in data['vendors']])
             with col2:
-                item = st.selectbox("Item", [i['item'] for i in st.session_state.hotel_data['inventory']])
+                item = st.selectbox("Item", [i['item'] for i in data['inventory']])
             
             quantity = st.number_input("Quantity", min_value=1, value=10)
             unit_price = st.number_input("Unit Price (₹)", min_value=1, value=10)
@@ -790,7 +743,7 @@ def show_main_app():
             
             if st.button("📦 Create Purchase Order"):
                 po_data = {
-                    'id': len(st.session_state.hotel_data['purchases']) + 1,
+                    'id': len(data['purchases']) + 1,
                     'vendor': vendor,
                     'item': item,
                     'quantity': quantity,
@@ -799,12 +752,12 @@ def show_main_app():
                     'date': str(datetime.date.today()),
                     'status': 'Pending'
                 }
-                st.session_state.hotel_data['purchases'].append(po_data)
+                data['purchases'].append(po_data)
                 st.success(f"✅ PO created for {quantity} {item}")
         
         with tab2:
-            if st.session_state.hotel_data['purchases']:
-                st.dataframe(pd.DataFrame(st.session_state.hotel_data['purchases']), use_container_width=True, hide_index=True)
+            if data['purchases']:
+                st.dataframe(pd.DataFrame(data['purchases']), use_container_width=True, hide_index=True)
             else:
                 st.info("No purchase orders")
     
@@ -813,11 +766,12 @@ def show_main_app():
     # ============================================
     elif menu == "👔 Staff Management":
         st.markdown("## 👔 Staff Management")
+        data = st.session_state.hotel_data
         
         tab1, tab2 = st.tabs(["👥 Staff List", "➕ Add Staff"])
         
         with tab1:
-            st.dataframe(pd.DataFrame(st.session_state.hotel_data['staff']), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(data['staff']), use_container_width=True, hide_index=True)
         
         with tab2:
             col1, col2 = st.columns(2)
@@ -830,14 +784,14 @@ def show_main_app():
             
             if st.button("➕ Add Staff"):
                 staff_data = {
-                    'id': len(st.session_state.hotel_data['staff']) + 1,
+                    'id': len(data['staff']) + 1,
                     'name': name,
                     'role': role,
                     'salary': salary,
                     'joining': str(joining),
                     'status': 'active'
                 }
-                st.session_state.hotel_data['staff'].append(staff_data)
+                data['staff'].append(staff_data)
                 st.success(f"✅ {name} added to staff")
     
     # ============================================
@@ -845,11 +799,12 @@ def show_main_app():
     # ============================================
     elif menu == "💰 Salary & Attendance":
         st.markdown("## 💰 Salary & Attendance")
+        data = st.session_state.hotel_data
         
         tab1, tab2 = st.tabs(["📋 Attendance", "💰 Process Salary"])
         
         with tab1:
-            staff_names = [s['name'] for s in st.session_state.hotel_data['staff'] if s['status'] == 'active']
+            staff_names = [s['name'] for s in data['staff'] if s['status'] == 'active']
             if staff_names:
                 selected = st.multiselect("Select Staff", staff_names)
                 status = st.selectbox("Status", ["Present", "Absent", "Leave", "Half Day"])
@@ -857,7 +812,7 @@ def show_main_app():
                 if st.button("✅ Mark Attendance"):
                     for s in selected:
                         att_data = {'staff': s, 'date': str(datetime.date.today()), 'status': status}
-                        st.session_state.hotel_data['attendance'].append(att_data)
+                        data['attendance'].append(att_data)
                     st.success(f"✅ Attendance marked for {len(selected)} staff")
         
         with tab2:
@@ -865,9 +820,9 @@ def show_main_app():
             year = st.number_input("Year", value=2026)
             
             if st.button("💰 Process Salary"):
-                total = sum(s['salary'] for s in st.session_state.hotel_data['staff'] if s['status'] == 'active')
+                total = sum(s['salary'] for s in data['staff'] if s['status'] == 'active')
                 salary_data = {'month': month, 'year': year, 'total': total, 'date': str(datetime.date.today())}
-                st.session_state.hotel_data['salaries_paid'].append(salary_data)
+                data['salaries_paid'].append(salary_data)
                 st.success(f"✅ Salary processed for {month} {year}: ₹{total:,}")
     
     # ============================================
@@ -875,48 +830,50 @@ def show_main_app():
     # ============================================
     elif menu == "📊 Reports":
         st.markdown("## 📊 Reports & Analytics")
+        data = st.session_state.hotel_data
         
         report = st.selectbox("Select Report", ["Daily Revenue", "Monthly Revenue", "Occupancy Report", "Staff Report", "Inventory Report"])
         
         if report == "Daily Revenue":
-            today_bills = [b for b in st.session_state.hotel_data['bills'] if b.get('date') == str(datetime.date.today())]
+            today_bills = [b for b in data['bills'] if b.get('date') == str(datetime.date.today())]
             if today_bills:
                 st.dataframe(pd.DataFrame(today_bills), use_container_width=True, hide_index=True)
                 st.metric("Total Today", f"₹{sum(b['total'] for b in today_bills):,}")
             else:
                 st.info("No bills for today")
         
-        elif report == "Monthly Revenue":
-            st.markdown("### Monthly Revenue Report")
-            month = st.selectbox("Select Month", ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"])
-            month_num = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].index(month) + 1
-            month_bills = [b for b in st.session_state.hotel_data['bills'] if b.get('date', '').startswith(f"2026-{str(month_num).zfill(2)}")]
-            if month_bills:
-                st.dataframe(pd.DataFrame(month_bills), use_container_width=True, hide_index=True)
-                st.metric(f"Total Revenue - {month}", f"₹{sum(b['total'] for b in month_bills):,}")
-            else:
-                st.info(f"No bills for {month}")
-        
         elif report == "Occupancy Report":
-            total = len(st.session_state.hotel_data['rooms'])
-            occupied = len([r for r in st.session_state.hotel_data['rooms'] if r['status'] == 'occupied'])
+            total = len(data['rooms'])
+            occupied = len([r for r in data['rooms'] if r['status'] == 'occupied'])
             st.metric("Occupancy Rate", f"{(occupied/total)*100:.0f}%")
             st.metric("Occupied Rooms", occupied)
             st.metric("Available Rooms", total - occupied)
         
         elif report == "Staff Report":
-            st.dataframe(pd.DataFrame(st.session_state.hotel_data['staff']), use_container_width=True, hide_index=True)
-            total_salary = sum(s['salary'] for s in st.session_state.hotel_data['staff'] if s['status'] == 'active')
+            st.dataframe(pd.DataFrame(data['staff']), use_container_width=True, hide_index=True)
+            total_salary = sum(s['salary'] for s in data['staff'] if s['status'] == 'active')
             st.metric("Monthly Salary Cost", f"₹{total_salary:,}")
         
         elif report == "Inventory Report":
-            st.dataframe(pd.DataFrame(st.session_state.hotel_data['inventory']), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(data['inventory']), use_container_width=True, hide_index=True)
+        
+        elif report == "Monthly Revenue":
+            st.markdown("### Monthly Revenue Report")
+            month = st.selectbox("Select Month", ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"])
+            month_num = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].index(month) + 1
+            month_bills = [b for b in data['bills'] if b.get('date', '').startswith(f"2026-{str(month_num).zfill(2)}")]
+            if month_bills:
+                st.dataframe(pd.DataFrame(month_bills), use_container_width=True, hide_index=True)
+                st.metric(f"Total Revenue - {month}", f"₹{sum(b['total'] for b in month_bills):,}")
+            else:
+                st.info(f"No bills for {month}")
     
     # ============================================
     # SETTINGS
     # ============================================
     elif menu == "⚙️ Settings":
         st.markdown("## ⚙️ System Settings")
+        data = st.session_state.hotel_data
         
         with st.expander("🏨 Hotel Information"):
             hotel_name = st.text_input("Hotel Name", "NEXA TECH HOTEL")
@@ -934,7 +891,7 @@ def show_main_app():
             presidential_rate = st.number_input("Presidential Suite Rate (₹)", min_value=5000, value=9500)
             
             if st.button("💾 Save Rates"):
-                for r in st.session_state.hotel_data['rooms']:
+                for r in data['rooms']:
                     if r['type'] == 'Deluxe':
                         r['price'] = deluxe_rate
                     elif r['type'] == 'Suite':
@@ -943,7 +900,7 @@ def show_main_app():
                         r['price'] = presidential_rate
                 st.success("Room rates updated!")
         
-        with st.expander("📱 SMS/WhatsApp Settings (Reminders)"):
+        with st.expander("📱 SMS/WhatsApp Settings"):
             st.info("Configure SMS API for auto reminders")
             api_key = st.text_input("API Key", type="password")
             sender_id = st.text_input("Sender ID")
@@ -956,28 +913,27 @@ def show_main_app():
                 'version': '2.0',
                 'company': 'NEXA TECH AI',
                 'licensed_to': st.session_state.company_name if not demo_mode else 'DEMO MODE',
-                'total_rooms': len(st.session_state.hotel_data['rooms']),
-                'total_staff': len(st.session_state.hotel_data['staff']),
-                'total_guests': len(st.session_state.hotel_data['guests'])
+                'total_rooms': len(data['rooms']),
+                'total_staff': len(data['staff']),
+                'total_guests': len(data['guests'])
             })
 
 # ============================================
-# MAIN ENTRY POINT
+# MAIN
 # ============================================
 
-# Initialize session state for license
-if 'licensed' not in st.session_state:
-    if not demo_mode:
-        licensed, company = check_license()
-        st.session_state.licensed = licensed
-        if licensed:
-            st.session_state.company_name = company
-    else:
-        st.session_state.licensed = True
-        st.session_state.company_name = "DEMO USER"
+# Initialize session state first
+init_session_state()
 
-# Check license
-if not st.session_state.licensed and not demo_mode:
-    show_purchase_page()
+# Check license and show appropriate page
+if not demo_mode and not st.session_state.licensed:
+    # Check actual license file
+    licensed, company = check_license()
+    if licensed:
+        st.session_state.licensed = True
+        st.session_state.company_name = company
+        show_main_app()
+    else:
+        show_purchase_page()
 else:
     show_main_app()
