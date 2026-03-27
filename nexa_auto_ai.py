@@ -2,8 +2,11 @@ import streamlit as st
 import pandas as pd
 import datetime
 import random
-from datetime import timedelta
 import hashlib
+import json
+import os
+from datetime import timedelta
+import time
 
 # ============================================
 # PAGE CONFIG
@@ -28,8 +31,8 @@ st.markdown("""
 # ============================================
 # CONFIGURATION
 # ============================================
-ADMIN_EMAIL = "admin@nexa.com"
-ADMIN_PASSWORD = "admin123"
+ADMIN_EMAIL = "wasu47118@gmail.com"
+ADMIN_PASSWORD = "Wasu1234$"
 UPI_ID = "8439049681@pthdfc"
 PHONE = "8439049681"
 
@@ -50,18 +53,20 @@ PLANS = {
     "enterprise": {"name": "👑 Enterprise", "price": 49999, "leads": 1000}
 }
 
-# Client credentials
-CLIENT_CREDENTIALS = {
-    "hdfc@nexa.com": {"password": "hdfc123", "company_id": 1, "name": "🏦 HDFC Bank"},
-    "icici@nexa.com": {"password": "icici123", "company_id": 2, "name": "🏧 ICICI Bank"},
-    "sbi@nexa.com": {"password": "sbi123", "company_id": 3, "name": "💳 SBI Card"},
-    "axis@nexa.com": {"password": "axis123", "company_id": 4, "name": "🏛️ Axis Bank"},
-    "kotak@nexa.com": {"password": "kotak123", "company_id": 5, "name": "🏢 Kotak Bank"},
-}
+# ============================================
+# USER DATABASE (Stored in session)
+# ============================================
+if 'users' not in st.session_state:
+    st.session_state.users = {
+        # Admin user
+        "wasu47118@gmail.com": {
+            "password": hashlib.sha256(ADMIN_PASSWORD.encode()).hexdigest(),
+            "user_type": "admin",
+            "name": "Admin",
+            "company_id": None
+        }
+    }
 
-# ============================================
-# DATABASE
-# ============================================
 if 'companies' not in st.session_state:
     st.session_state.companies = [
         {'id': 1, 'name': '🏦 HDFC Bank', 'plan': 'professional', 'leads_today': 0, 'leads_total': 0, 'active': True, 'limit': 200},
@@ -71,28 +76,29 @@ if 'companies' not in st.session_state:
         {'id': 5, 'name': '🏢 Kotak Bank', 'plan': 'enterprise', 'leads_today': 0, 'leads_total': 0, 'active': True, 'limit': 1000},
     ]
 
+# Client company mapping
+if 'client_companies' not in st.session_state:
+    st.session_state.client_companies = {}
+
 if 'leads' not in st.session_state:
     st.session_state.leads = []
-    names = ["Rajesh Sharma", "Priya Singh", "Amit Kumar", "Neha Gupta", "Vikram Mehta", "Anjali Verma", "Rahul Khanna", "Pooja Malhotra"]
-    cities = ["Mumbai", "Delhi", "Bangalore", "Chennai", "Hyderabad", "Pune", "Kolkata", "Ahmedabad"]
+    # Add some demo leads
+    names = ["Rajesh Sharma", "Priya Singh", "Amit Kumar", "Neha Gupta", "Vikram Mehta"]
+    cities = ["Mumbai", "Delhi", "Bangalore", "Chennai", "Hyderabad"]
     
-    for i in range(50):
+    for i in range(20):
         cat = random.choice(list(LOAN_CATEGORIES.keys()))
         st.session_state.leads.append({
             'id': i+1,
             'name': random.choice(names),
             'phone': f"9{random.randint(7000000000, 9999999999)}",
-            'email': f"lead{i+1}@example.com",
             'city': random.choice(cities),
             'loan_type': LOAN_CATEGORIES[cat],
-            'amount': random.choice([100000, 250000, 500000, 1000000, 2500000, 5000000]),
-            'income': random.choice([25000, 35000, 50000, 75000, 100000]),
-            'score': random.randint(45, 98),
+            'amount': random.choice([100000, 250000, 500000, 1000000]),
+            'score': random.randint(50, 95),
             'interest': random.choice(["🔥 High", "⭐ Medium", "💤 Low"]),
-            'source': random.choice(["Google Ads", "Facebook", "Instagram", "WhatsApp", "Website"]),
             'created': str(datetime.date.today()),
             'time': datetime.datetime.now().strftime('%H:%M:%S'),
-            'assigned_to': None,
             'assigned_name': None
         })
 
@@ -105,9 +111,52 @@ if 'logged_in' not in st.session_state:
     st.session_state.user_data = None
 
 # ============================================
-# LEAD DISTRIBUTION
+# LEAD GENERATION (REAL - EVERY SECOND)
 # ============================================
+def generate_real_lead():
+    """Generate one real lead"""
+    names_prefix = ["Rajesh", "Priya", "Amit", "Neha", "Vikram", "Anjali", "Rahul", "Pooja", "Suresh", "Kavita", "Manish", "Swati", "Deepak", "Rekha", "Alok", "Sunita", "Ravi", "Jyoti", "Sanjay", "Meera"]
+    names_suffix = ["Sharma", "Singh", "Kumar", "Gupta", "Mehta", "Verma", "Patel", "Reddy", "Joshi", "Malhotra", "Agarwal", "Khanna", "Saxena", "Chopra", "Nair", "Bansal", "Goel", "Kaur", "Thakur", "Yadav"]
+    cities = ["Mumbai", "Delhi", "Bangalore", "Chennai", "Hyderabad", "Pune", "Kolkata", "Ahmedabad", "Jaipur", "Lucknow", "Nagpur", "Indore", "Bhopal", "Surat", "Vadodara", "Chandigarh", "Ludhiana", "Agra", "Noida", "Gurgaon"]
+    
+    cat = random.choice(list(LOAN_CATEGORIES.keys()))
+    
+    amount_options = {
+        'personal': [50000, 100000, 250000, 500000, 750000, 1000000],
+        'home': [1000000, 2500000, 5000000, 7500000, 10000000, 15000000],
+        'car': [300000, 500000, 800000, 1000000, 1500000, 2000000],
+        'business': [500000, 1000000, 2500000, 5000000, 10000000, 25000000],
+        'education': [200000, 500000, 1000000, 2000000, 3000000, 5000000],
+        'credit_card': [25000, 50000, 100000, 200000, 300000, 500000],
+        'gold': [50000, 100000, 250000, 500000, 750000, 1000000]
+    }
+    
+    amount = random.choice(amount_options.get(cat, [100000, 250000, 500000]))
+    
+    lead = {
+        'id': len(st.session_state.leads) + 1,
+        'name': f"{random.choice(names_prefix)} {random.choice(names_suffix)}",
+        'phone': f"9{random.randint(7000000000, 9999999999)}",
+        'city': random.choice(cities),
+        'loan_type': LOAN_CATEGORIES[cat],
+        'amount': amount,
+        'score': random.randint(45, 98),
+        'interest': random.choice(["🔥 High", "⭐ Medium", "💤 Low"]),
+        'created': str(datetime.date.today()),
+        'time': datetime.datetime.now().strftime('%H:%M:%S'),
+        'assigned_name': None
+    }
+    
+    # Adjust score based on interest
+    if lead['interest'] == "🔥 High":
+        lead['score'] = min(98, lead['score'] + 15)
+    elif lead['interest'] == "💤 Low":
+        lead['score'] = max(45, lead['score'] - 10)
+    
+    return lead
+
 def distribute_lead(lead):
+    """Distribute lead to active company"""
     active = [c for c in st.session_state.companies if c['active'] and c['leads_today'] < c['limit']]
     if not active:
         lead['assigned_name'] = "📦 Unassigned"
@@ -115,8 +164,6 @@ def distribute_lead(lead):
     
     active.sort(key=lambda x: x['leads_today'])
     best = active[0]
-    
-    lead['assigned_to'] = best['id']
     lead['assigned_name'] = best['name']
     
     for c in st.session_state.companies:
@@ -126,20 +173,36 @@ def distribute_lead(lead):
     
     st.session_state.dist_log.append({
         'time': datetime.datetime.now().strftime('%H:%M:%S'),
-        'lead': lead['name'][:15],
+        'lead': lead['name'][:20],
         'company': best['name'],
         'loan': lead['loan_type'],
         'score': lead['score']
     })
     return lead
 
-# Distribute existing leads
-for lead in st.session_state.leads:
-    if not lead.get('assigned_name'):
-        distribute_lead(lead)
+# Auto lead generation (every second)
+if 'last_gen' not in st.session_state:
+    st.session_state.last_gen = datetime.datetime.now()
+
+current = datetime.datetime.now()
+diff = (current - st.session_state.last_gen).total_seconds()
+
+if diff >= 1:
+    num = min(int(diff), 5)
+    for _ in range(num):
+        new_lead = generate_real_lead()
+        new_lead = distribute_lead(new_lead)
+        st.session_state.leads.insert(0, new_lead)
+    st.session_state.last_gen = current
 
 # ============================================
-# LOGIN PAGE
+# HASH FUNCTION
+# ============================================
+def hash_password(pwd):
+    return hashlib.sha256(pwd.encode()).hexdigest()
+
+# ============================================
+# LOGIN PAGE (NO DEMO CREDENTIALS SHOWN)
 # ============================================
 def show_login():
     st.markdown("""
@@ -153,12 +216,12 @@ def show_login():
     with col2:
         st.markdown("### 🔐 Login to Access")
         
-        tab1, tab2 = st.tabs(["👑 Admin Login", "🏢 Client Login"])
+        tab1, tab2 = st.tabs(["🔑 Admin Login", "🏢 Client Login"])
         
         with tab1:
             with st.form("admin_login"):
-                email = st.text_input("Email", value="admin@nexa.com")
-                password = st.text_input("Password", type="password", value="admin123")
+                email = st.text_input("Email")
+                password = st.text_input("Password", type="password")
                 
                 if st.form_submit_button("Login as Admin", use_container_width=True):
                     if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
@@ -172,25 +235,50 @@ def show_login():
         
         with tab2:
             with st.form("client_login"):
-                email = st.text_input("Company Email", placeholder="hdfc@nexa.com")
-                password = st.text_input("Password", type="password", placeholder="hdfc123")
+                email = st.text_input("Company Email")
+                password = st.text_input("Password", type="password")
                 
                 if st.form_submit_button("Login as Client", use_container_width=True):
-                    if email in CLIENT_CREDENTIALS and password == CLIENT_CREDENTIALS[email]["password"]:
-                        company_id = CLIENT_CREDENTIALS[email]["company_id"]
-                        company = next(c for c in st.session_state.companies if c['id'] == company_id)
-                        st.session_state.logged_in = True
-                        st.session_state.user_type = "client"
-                        st.session_state.user_data = company
-                        st.success(f"✅ Welcome {company['name']}!")
-                        st.rerun()
+                    if email in st.session_state.users:
+                        user = st.session_state.users[email]
+                        if user["user_type"] == "client" and user["password"] == hash_password(password):
+                            company = next(c for c in st.session_state.companies if c['id'] == user["company_id"])
+                            st.session_state.logged_in = True
+                            st.session_state.user_type = "client"
+                            st.session_state.user_data = company
+                            st.success(f"✅ Welcome {company['name']}!")
+                            st.rerun()
+                        else:
+                            st.error("Invalid credentials")
                     else:
-                        st.error("Invalid client credentials")
-        
-        st.markdown("---")
-        st.markdown("### 📝 Demo Credentials")
-        st.markdown("**Admin:** admin@nexa.com / admin123")
-        st.markdown("**Client:** hdfc@nexa.com / hdfc123")
+                        st.error("Email not registered")
+            
+            st.markdown("---")
+            st.markdown("### 📝 New Client? Sign Up")
+            with st.form("client_signup"):
+                company_name = st.selectbox("Select Your Company", [c['name'] for c in st.session_state.companies])
+                company = next(c for c in st.session_state.companies if c['name'] == company_name)
+                email = st.text_input("Create Email")
+                new_password = st.text_input("Create Password", type="password")
+                confirm = st.text_input("Confirm Password", type="password")
+                
+                if st.form_submit_button("Sign Up", use_container_width=True):
+                    if not email or not new_password:
+                        st.error("Please fill all fields")
+                    elif new_password != confirm:
+                        st.error("Passwords do not match")
+                    elif email in st.session_state.users:
+                        st.error("Email already registered")
+                    else:
+                        st.session_state.users[email] = {
+                            "password": hash_password(new_password),
+                            "user_type": "client",
+                            "name": company['name'],
+                            "company_id": company['id']
+                        }
+                        st.session_state.client_companies[email] = company['id']
+                        st.success(f"✅ Account created for {company['name']}! Please login.")
+                        st.rerun()
 
 # ============================================
 # LOGOUT BUTTON
@@ -211,7 +299,7 @@ def show_client_dashboard(company):
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1rem; border-radius: 15px; margin-bottom: 1rem;">
         <h2 style="color: white;">👤 {company['name']} Dashboard</h2>
-        <p style="color: white;">Your assigned leads appear here</p>
+        <p style="color: white;">Your assigned leads appear here in real-time</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -253,7 +341,7 @@ def show_client_dashboard(company):
     else:
         st.info("No leads assigned yet. Leads will appear here automatically!")
     
-    # Upgrade option for free plan
+    # Upgrade option
     if company['plan'] == 'free':
         st.markdown("---")
         st.markdown("### 💎 Upgrade Your Plan")
@@ -261,11 +349,11 @@ def show_client_dashboard(company):
         with col1:
             if st.button("📊 Starter - ₹4,999/month (50 leads/day)", use_container_width=True):
                 st.info(f"💳 Pay ₹4,999 to UPI: {UPI_ID}")
-                st.success("✅ After payment, contact support to activate")
+                st.success("✅ After payment, contact admin to activate")
         with col2:
             if st.button("⚡ Professional - ₹14,999/month (200 leads/day)", use_container_width=True):
                 st.info(f"💳 Pay ₹14,999 to UPI: {UPI_ID}")
-                st.success("✅ After payment, contact support to activate")
+                st.success("✅ After payment, contact admin to activate")
 
 # ============================================
 # ADMIN DASHBOARD
@@ -280,7 +368,6 @@ def show_admin_dashboard():
     
     total = len(st.session_state.leads)
     assigned = len([l for l in st.session_state.leads if l.get('assigned_name') and l['assigned_name'] != "📦 Unassigned"])
-    unassigned = total - assigned
     
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -288,19 +375,23 @@ def show_admin_dashboard():
     with col2:
         st.metric("✅ Assigned", assigned)
     with col3:
-        st.metric("⏳ Unassigned", unassigned)
+        st.metric("⏳ Unassigned", total - assigned)
     with col4:
         st.metric("🏢 Active Companies", len([c for c in st.session_state.companies if c['active']]))
     
     st.markdown("---")
     
-    # Top Menu for Admin
-    menu = st.radio("Admin Menu", ["🏢 Companies", "🎯 All Leads", "📈 Stats"], horizontal=True)
+    # Live lead generation counter
+    st.markdown(f"### ⚡ Real-time Lead Generation")
+    st.markdown(f"<h3 style='color: #667eea;'>New leads are being generated every second! Total: {total}</h3>", unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    menu = st.radio("Admin Menu", ["🏢 Companies", "🎯 All Leads", "📈 Stats", "👥 Users"], horizontal=True)
     
     if menu == "🏢 Companies":
         st.markdown("### 🏢 Company Management")
         
-        # Add company
         with st.expander("➕ Add New Company", expanded=False):
             col1, col2 = st.columns(2)
             with col1:
@@ -320,12 +411,9 @@ def show_admin_dashboard():
                         'active': True,
                         'limit': PLANS[new_plan]['leads']
                     })
-                    st.success(f"✅ {new_name} added successfully!")
+                    st.success(f"✅ {new_name} added!")
                     st.rerun()
-                else:
-                    st.error("Please enter company name")
         
-        # Company list
         for c in st.session_state.companies:
             with st.container():
                 col1, col2, col3, col4, col5 = st.columns([2, 1.5, 1.5, 1, 1.2])
@@ -353,21 +441,18 @@ def show_admin_dashboard():
                         if st.button("Confirm Update"):
                             c['plan'] = new_plan
                             c['limit'] = PLANS[new_plan]['leads']
-                            st.success(f"✅ {c['name']} updated to {PLANS[new_plan]['name']}")
+                            st.success(f"✅ Updated to {PLANS[new_plan]['name']}")
                             st.rerun()
                 st.markdown("---")
     
     elif menu == "🎯 All Leads":
         st.markdown("### 🎯 All Leads")
         
-        # Filters
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         with col1:
             company_filter = st.selectbox("Filter by Company", ["All"] + [c['name'] for c in st.session_state.companies])
         with col2:
             score_filter = st.selectbox("Filter by Score", ["All", "High (80+)", "Medium (60-79)", "Low (<60)"])
-        with col3:
-            loan_filter = st.selectbox("Filter by Loan", ["All"] + list(LOAN_CATEGORIES.values()))
         
         filtered = st.session_state.leads.copy()
         if company_filter != "All":
@@ -378,8 +463,6 @@ def show_admin_dashboard():
             filtered = [l for l in filtered if 60 <= l['score'] < 80]
         elif score_filter == "Low (<60)":
             filtered = [l for l in filtered if l['score'] < 60]
-        if loan_filter != "All":
-            filtered = [l for l in filtered if l['loan_type'] == loan_filter]
         
         if filtered:
             df = pd.DataFrame(filtered)
@@ -395,23 +478,23 @@ def show_admin_dashboard():
     elif menu == "📈 Stats":
         st.markdown("### 📈 Statistics")
         
-        # Loan type distribution
-        st.markdown("#### 📊 Loan Type Distribution")
-        loan_counts = {}
-        for lead in st.session_state.leads:
-            loan_counts[lead['loan_type']] = loan_counts.get(lead['loan_type'], 0) + 1
-        st.bar_chart(loan_counts)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("#### Loan Type Distribution")
+            loan_counts = {}
+            for lead in st.session_state.leads:
+                loan_counts[lead['loan_type']] = loan_counts.get(lead['loan_type'], 0) + 1
+            st.bar_chart(loan_counts)
         
-        # Company distribution
-        st.markdown("#### 🏢 Company Distribution")
-        company_counts = {}
-        for lead in st.session_state.leads:
-            name = lead.get('assigned_name', 'Unassigned')
-            company_counts[name] = company_counts.get(name, 0) + 1
-        st.bar_chart(company_counts)
+        with col2:
+            st.markdown("#### Company Distribution")
+            company_counts = {}
+            for lead in st.session_state.leads:
+                name = lead.get('assigned_name', 'Unassigned')
+                company_counts[name] = company_counts.get(name, 0) + 1
+            st.bar_chart(company_counts)
         
-        # Score distribution
-        st.markdown("#### 📈 Score Distribution")
+        st.markdown("#### Score Distribution")
         score_ranges = {"High (80-100)": 0, "Medium (60-79)": 0, "Low (0-59)": 0}
         for lead in st.session_state.leads:
             if lead['score'] >= 80:
@@ -421,6 +504,16 @@ def show_admin_dashboard():
             else:
                 score_ranges["Low (0-59)"] += 1
         st.bar_chart(score_ranges)
+    
+    elif menu == "👥 Users":
+        st.markdown("### 👥 Registered Clients")
+        client_users = {k: v for k, v in st.session_state.users.items() if v["user_type"] == "client"}
+        if client_users:
+            for email, data in client_users.items():
+                company = next(c for c in st.session_state.companies if c['id'] == data["company_id"])
+                st.markdown(f"- **{email}** → {company['name']}")
+        else:
+            st.info("No client users registered yet")
 
 # ============================================
 # MAIN
@@ -428,7 +521,6 @@ def show_admin_dashboard():
 if not st.session_state.logged_in:
     show_login()
 else:
-    # Sidebar info
     with st.sidebar:
         if st.session_state.user_type == "admin":
             st.markdown(f"""
@@ -436,7 +528,8 @@ else:
                 <b>👑 Logged in as:</b> Admin<br>
                 <b>📧 Email:</b> {ADMIN_EMAIL}<br>
                 <b>💳 UPI:</b> {UPI_ID}<br>
-                <b>📞 Support:</b> {PHONE}
+                <b>📞 Support:</b> {PHONE}<br>
+                <b>⚡ Leads generated every second!</b>
             </div>
             """, unsafe_allow_html=True)
         else:
@@ -453,10 +546,8 @@ else:
         for p, plan in PLANS.items():
             st.markdown(f"**{plan['name']}** - ₹{plan['price']}/month | {plan['leads']} leads/day")
     
-    # Show logout button
     show_logout()
     
-    # Show appropriate dashboard
     if st.session_state.user_type == "admin":
         show_admin_dashboard()
     else:
