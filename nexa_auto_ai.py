@@ -98,6 +98,7 @@ if 'auto_leads_db' not in st.session_state:
                 'interest': random.choice(["High", "Medium", "Low"]),
                 'source': random.choice(["Google Ads", "Facebook", "Instagram", "WhatsApp", "Website", "Referral"]),
                 'created': str(datetime.date.today()),
+                'time': datetime.datetime.now().strftime('%H:%M:%S'),
                 'status': 'new'
             }
             st.session_state.auto_leads_db[cat].append(lead)
@@ -107,6 +108,9 @@ if 'company_leads' not in st.session_state:
     st.session_state.company_plan = "free"
     st.session_state.company_leads_today = 0
     st.session_state.last_generation = None
+
+if 'email_log' not in st.session_state:
+    st.session_state.email_log = []
 
 # ============================================
 # EMAIL ALERT FUNCTION
@@ -131,13 +135,9 @@ def send_email_alert(lead, category):
         Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         """
         
-        # Log to console (actual email can be configured)
         print(f"EMAIL ALERT: {subject}")
         print(body)
         
-        # Store in session for display
-        if 'email_log' not in st.session_state:
-            st.session_state.email_log = []
         st.session_state.email_log.append({
             'time': datetime.datetime.now().strftime('%H:%M:%S'),
             'lead': lead['name'],
@@ -242,6 +242,25 @@ def get_company_leads():
     return all_leads[:limit]
 
 # ============================================
+# AUTO LEAD GENERATION (EVERY SECOND)
+# ============================================
+
+if 'auto_counter' not in st.session_state:
+    st.session_state.auto_counter = 0
+    st.session_state.last_gen_time = datetime.datetime.now()
+
+# Generate new leads automatically
+current_time = datetime.datetime.now()
+time_diff = (current_time - st.session_state.last_gen_time).total_seconds()
+
+if time_diff >= 1:
+    num_to_generate = int(time_diff)
+    for _ in range(min(num_to_generate, 5)):
+        auto_generate_lead()
+        st.session_state.auto_counter += 1
+    st.session_state.last_gen_time = current_time
+
+# ============================================
 # SIDEBAR
 # ============================================
 
@@ -256,7 +275,6 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # Mode selection
     mode = st.radio("Access Mode", ["👤 Client Dashboard", "👑 Admin Dashboard"], label_visibility="collapsed")
     
     st.markdown("---")
@@ -298,7 +316,6 @@ with st.sidebar:
             <b>📧 Email:</b> {ADMIN_EMAIL}<br>
             <b>💳 UPI:</b> {UPI_ID}<br>
             <b>📞 Phone:</b> {PHONE}<br>
-            <b>💰 Revenue:</b> Coming Soon
         </div>
         """, unsafe_allow_html=True)
     
@@ -313,32 +330,11 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # ============================================
-# AUTO LEAD GENERATION (EVERY SECOND)
-# ============================================
-
-# Simulate auto generation every refresh (in production, use background thread)
-if 'auto_counter' not in st.session_state:
-    st.session_state.auto_counter = 0
-    st.session_state.last_gen_time = datetime.datetime.now()
-
-# Generate new leads automatically
-current_time = datetime.datetime.now()
-time_diff = (current_time - st.session_state.last_gen_time).total_seconds()
-
-if time_diff >= 1:  # Generate every second
-    num_to_generate = int(time_diff)  # Generate leads for each second passed
-    for _ in range(min(num_to_generate, 5)):  # Max 5 per refresh
-        lead, cat = auto_generate_lead()
-        st.session_state.auto_counter += 1
-    st.session_state.last_gen_time = current_time
-
-# ============================================
 # MAIN UI - CLIENT DASHBOARD
 # ============================================
 
 if mode == "👤 Client Dashboard":
     
-    # Header
     st.markdown("""
     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1.5rem; border-radius: 15px; margin-bottom: 1.5rem;">
         <h1 style="color: white;">🤖 Your Auto Leads</h1>
@@ -346,19 +342,18 @@ if mode == "👤 Client Dashboard":
     </div>
     """, unsafe_allow_html=True)
     
-    # Stats
+    leads = get_company_leads()
+    total_leads = len(leads)
+    
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("📊 Leads Today", st.session_state.company_leads_today)
     with col2:
         st.metric("🎯 Max Leads", PLANS[st.session_state.company_plan]['leads_per_day'])
     with col3:
-        st.metric("⚡ Live Leads", len(get_company_leads()))
+        st.metric("⚡ Live Leads", total_leads)
     
     st.markdown("---")
-    
-    # Display leads
-    leads = get_company_leads()
     
     if not leads:
         st.info("No leads available. Upgrade your plan for more leads!")
@@ -380,10 +375,9 @@ if mode == "👤 Client Dashboard":
                     st.caption(f"🔥 {lead['interest']} Interest")
                 with col4:
                     st.markdown(f"📍 {lead['city']}")
-                    st.caption(lead['time'])
+                    st.caption(lead.get('time', lead['created']))
                 st.markdown("---")
     
-    # If free plan, show upgrade prompt
     if st.session_state.company_plan == "free":
         st.markdown("""
         <div style="background: #fff3cd; padding: 1rem; border-radius: 10px; text-align: center; margin-top: 1rem;">
@@ -404,13 +398,11 @@ else:
     </div>
     """, unsafe_allow_html=True)
     
-    # Stats
     total_leads = sum(len(leads) for leads in st.session_state.auto_leads_db.values())
     st.metric("📊 Total Leads Generated", total_leads)
     
     st.markdown("---")
     
-    # Category wise tabs
     tabs = st.tabs([f"{LOAN_CATEGORIES[cat]['icon']} {LOAN_CATEGORIES[cat]['name']}" for cat in LOAN_CATEGORIES.keys()])
     
     for idx, (cat, leads) in enumerate(st.session_state.auto_leads_db.items()):
@@ -422,7 +414,6 @@ else:
                 st.dataframe(df[['name', 'phone', 'city', 'amount', 'score', 'interest', 'source', 'time']], 
                             use_container_width=True, hide_index=True)
                 
-                # Export option
                 if st.button(f"📥 Export {LOAN_CATEGORIES[cat]['name']} Leads", key=f"export_{cat}"):
                     csv = df.to_csv(index=False)
                     st.download_button("Download CSV", csv, f"{cat}_leads.csv", "text/csv")
@@ -431,35 +422,21 @@ else:
     
     st.markdown("---")
     
-    # Email Log
     with st.expander("📧 Email Alert Log", expanded=False):
-        if 'email_log' in st.session_state and st.session_state.email_log:
+        if st.session_state.email_log:
             for log in st.session_state.email_log[-20:]:
                 st.markdown(f"✅ {log['time']} - {log['lead']} - {log['category']}")
         else:
             st.info("No emails sent yet")
     
-    # Auto Generation Status
     with st.expander("⚙️ Auto Generation Status", expanded=False):
-        st.success(f"🟢 Active - Generating leads every second")
+        st.success("🟢 Active - Generating leads every second")
         st.info(f"📈 Last generated: {st.session_state.last_gen_time.strftime('%H:%M:%S')}")
         st.info(f"🎯 Total leads: {total_leads}")
         if st.button("🔄 Manual Generate 5 Leads"):
             for _ in range(5):
                 auto_generate_lead()
             st.rerun()
-
-# ============================================
-# AUTO GENERATION STATUS (Footer)
-# ============================================
-
-st.markdown("---")
-st.markdown(f"""
-<div style="text-align: center; font-size: 0.8rem; color: #666;">
-    <b>🤖 NEXA AUTO AI</b> | Generating leads every second | {len(get_company_leads())} leads available<br>
-    © 2026 Enterprise Edition | UPI: {UPI_ID} | Support: {PHONE}
-</div>
-""", unsafe_allow_html=True)
 
 # Update company lead count
 st.session_state.company_leads_today = min(len(get_company_leads()), PLANS[st.session_state.company_plan]['leads_per_day'])
