@@ -747,4 +747,85 @@ def show_main_app():
             today_bills = [b for b in st.session_state.hotel_data['bills'] if b.get('date') == str(datetime.date.today())]
             if today_bills:
                 st.dataframe(pd.DataFrame(today_bills), use_container_width=True, hide_index=True)
-                st.metric("Total Today", f"₹{sum(b['total'] for b
+                st.metric("Total Today", f"₹{sum(b['total'] for b in today_bills):,}")
+        
+        elif report == "Occupancy Report":
+            total = len(st.session_state.hotel_data['rooms'])
+            occupied = len([r for r in st.session_state.hotel_data['rooms'] if r['status'] == 'occupied'])
+            st.metric("Occupancy Rate", f"{(occupied/total)*100:.0f}%")
+            st.metric("Occupied Rooms", occupied)
+            st.metric("Available Rooms", total - occupied)
+        
+        elif report == "Staff Report":
+            st.dataframe(pd.DataFrame(st.session_state.hotel_data['staff']), use_container_width=True, hide_index=True)
+            total_salary = sum(s['salary'] for s in st.session_state.hotel_data['staff'] if s['status'] == 'active')
+            st.metric("Monthly Salary Cost", f"₹{total_salary:,}")
+        
+        elif report == "Inventory Report":
+            st.dataframe(pd.DataFrame(st.session_state.hotel_data['inventory']), use_container_width=True, hide_index=True)
+    
+    # ============================================
+    # SETTINGS
+    # ============================================
+    elif menu == "⚙️ Settings":
+        st.markdown("## ⚙️ System Settings")
+        
+        with st.expander("🏨 Hotel Information"):
+            hotel_name = st.text_input("Hotel Name", "NEXA TECH HOTEL")
+            hotel_address = st.text_area("Address", "Your Hotel Address")
+            hotel_phone = st.text_input("Phone", "8439049681")
+            hotel_email = st.text_input("Email", "info@nexatech.com")
+            gst_number = st.text_input("GST Number", "27AAACF1234F1Z")
+            
+            if st.button("💾 Save Settings"):
+                st.success("Settings saved!")
+        
+        with st.expander("💰 Pricing Settings"):
+            deluxe_rate = st.number_input("Deluxe Room Rate (₹)", min_value=1000, value=3500)
+            suite_rate = st.number_input("Suite Rate (₹)", min_value=2000, value=5500)
+            presidential_rate = st.number_input("Presidential Suite Rate (₹)", min_value=5000, value=9500)
+            
+            if st.button("💾 Save Rates"):
+                for r in st.session_state.hotel_data['rooms']:
+                    if r['type'] == 'Deluxe':
+                        r['price'] = deluxe_rate
+                    elif r['type'] == 'Suite':
+                        r['price'] = suite_rate
+                    elif r['type'] == 'Presidential':
+                        r['price'] = presidential_rate
+                st.success("Room rates updated!")
+        
+        with st.expander("📱 SMS/WhatsApp Settings (Reminders)"):
+            st.info("Configure SMS API for auto reminders")
+            api_key = st.text_input("API Key", type="password")
+            sender_id = st.text_input("Sender ID")
+            
+            if st.button("💾 Save API Settings"):
+                st.success("API settings saved!")
+        
+        with st.expander("ℹ️ System Info"):
+            st.json({
+                'version': '2.0',
+                'company': 'NEXA TECH AI',
+                'licensed_to': st.session_state.company_name,
+                'total_rooms': len(st.session_state.hotel_data['rooms']),
+                'total_staff': len(st.session_state.hotel_data['staff']),
+                'total_guests': len(st.session_state.hotel_data['guests'])
+            })
+
+# ============================================
+# MAIN ENTRY POINT
+# ============================================
+
+# Initialize session state for license
+if 'licensed' not in st.session_state:
+    licensed, company = check_license()
+    st.session_state.licensed = licensed
+    if licensed:
+        st.session_state.company_name = company
+
+# Check license
+if not st.session_state.licensed:
+    show_purchase_page()
+else:
+    show_main_app()
