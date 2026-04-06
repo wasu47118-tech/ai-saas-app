@@ -1,10 +1,8 @@
 streamlit
 pandas
-pillow
-pytesseract
+feedparser
 requests
-PyPDF2
-psutil
+pywhatkit
 schedule
-qrcode
-pillow
+bs4
+lxml
