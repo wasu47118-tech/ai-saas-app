@@ -20,7 +20,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS for Professional Look
+# Custom CSS
 st.markdown("""
 <style>
     #MainMenu {visibility: hidden;}
@@ -115,6 +115,11 @@ st.markdown("""
         border-left: 4px solid #28a745;
     }
     
+    .qr-container {
+        text-align: center;
+        margin: 1rem 0;
+    }
+    
     .footer {
         text-align: center;
         padding: 2rem;
@@ -132,10 +137,8 @@ ADMIN_PASSWORD = "Wasu1234$"
 UPI_ID = "8439049681@pthdfc"
 PHONE = "8439049681"
 
-# Telegram Bot Token
 TELEGRAM_BOT_TOKEN = "8756226031:AAFpi0sBKKooqWrQhavpEFyN7peYJs0WfVw"
 
-# Categories
 CATEGORIES = {
     "all": {"name": "📰 All News", "color": "#667eea"},
     "crime": {"name": "🚨 Crime", "color": "#ff6b6b"},
@@ -178,11 +181,13 @@ if 'payment_success' not in st.session_state:
 if 'payment_message' not in st.session_state:
     st.session_state.payment_message = ""
 
+if 'payment_pending' not in st.session_state:
+    st.session_state.payment_pending = None
+
 # ============================================
 # TELEGRAM FUNCTIONS
 # ============================================
 def send_telegram_message(chat_id, message):
-    """Send message via Telegram Bot"""
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
         data = {
@@ -196,7 +201,6 @@ def send_telegram_message(chat_id, message):
         return False
 
 def send_news_to_subscribers(news):
-    """Send news to all active Telegram subscribers"""
     image_emoji = NEWS_IMAGES.get(news['category'], NEWS_IMAGES['default'])
     
     message = f"""<b>⚡ NEXA NEWS ALERT!</b>
@@ -230,11 +234,10 @@ def send_news_to_subscribers(news):
 # AGRA NEWS FETCHER
 # ============================================
 def fetch_agra_news():
-    """Fetch news from multiple sources - only AGRA"""
     all_news = []
     seen_titles = set()
     
-    # Google News RSS (Agra)
+    # Google News RSS
     try:
         url = "https://news.google.com/rss/search?q=Agra+India&hl=en-IN&gl=IN&ceid=IN:en"
         feed = feedparser.parse(url)
@@ -254,7 +257,7 @@ def fetch_agra_news():
     except:
         pass
     
-    # Times of India (Agra)
+    # Times of India
     try:
         url = "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms"
         feed = feedparser.parse(url)
@@ -274,52 +277,38 @@ def fetch_agra_news():
     except:
         pass
     
-    # Categorize news
     for news in all_news:
         news['category'] = categorize_news(news['title'] + ' ' + news['summary'])
     
     return all_news
 
 def categorize_news(text):
-    """Auto categorize news based on keywords"""
     text_lower = text.lower()
     
-    crime_keywords = ['crime', 'murder', 'theft', 'robbery', 'kidnap', 'rape', 'arrest', 'accused', 'police', 'case']
-    cyber_keywords = ['cyber', 'hack', 'fraud', 'scam', 'online', 'digital', 'phishing']
-    business_keywords = ['business', 'market', 'economy', 'company', 'startup', 'investment', 'stock']
-    tech_keywords = ['tech', 'technology', 'app', 'software', 'ai', 'digital', 'smartphone', 'mobile']
-    sports_keywords = ['sports', 'cricket', 'football', 'match', 'tournament', 'player', 'team']
-    entertainment_keywords = ['film', 'movie', 'actor', 'actress', 'celebrity', 'bollywood', 'entertainment']
-    politics_keywords = ['politics', 'election', 'minister', 'government', 'party', 'bjp', 'congress', 'modi']
-    health_keywords = ['health', 'hospital', 'doctor', 'disease', 'covid', 'treatment', 'vaccine']
-    auto_keywords = ['car', 'auto', 'vehicle', 'bike', 'transport', 'road', 'traffic']
-    education_keywords = ['school', 'college', 'education', 'student', 'exam', 'university', 'admission']
-    
-    if any(word in text_lower for word in crime_keywords):
+    if any(w in text_lower for w in ['crime', 'murder', 'theft', 'robbery', 'kidnap', 'rape', 'arrest']):
         return "crime"
-    elif any(word in text_lower for word in cyber_keywords):
+    elif any(w in text_lower for w in ['cyber', 'hack', 'fraud', 'scam', 'online', 'digital']):
         return "cyber"
-    elif any(word in text_lower for word in business_keywords):
+    elif any(w in text_lower for w in ['business', 'market', 'economy', 'company', 'startup']):
         return "business"
-    elif any(word in text_lower for word in tech_keywords):
+    elif any(w in text_lower for w in ['tech', 'technology', 'app', 'software', 'ai']):
         return "technology"
-    elif any(word in text_lower for word in sports_keywords):
+    elif any(w in text_lower for w in ['sports', 'cricket', 'football', 'match', 'tournament']):
         return "sports"
-    elif any(word in text_lower for word in entertainment_keywords):
+    elif any(w in text_lower for w in ['film', 'movie', 'actor', 'actress', 'bollywood']):
         return "entertainment"
-    elif any(word in text_lower for word in politics_keywords):
+    elif any(w in text_lower for w in ['politics', 'election', 'minister', 'government', 'bjp']):
         return "politics"
-    elif any(word in text_lower for word in health_keywords):
+    elif any(w in text_lower for w in ['health', 'hospital', 'doctor', 'disease', 'covid']):
         return "health"
-    elif any(word in text_lower for word in auto_keywords):
+    elif any(w in text_lower for w in ['car', 'auto', 'vehicle', 'bike', 'transport']):
         return "auto"
-    elif any(word in text_lower for word in education_keywords):
+    elif any(w in text_lower for w in ['school', 'college', 'education', 'student', 'exam']):
         return "education"
     else:
         return "local"
 
 def check_new_news():
-    """Background thread to check new news every 2 minutes"""
     while True:
         try:
             news_list = fetch_agra_news()
@@ -334,7 +323,7 @@ def check_new_news():
 # SUBSCRIPTION PAGE
 # ============================================
 def show_subscription_page():
-    # Show payment success message if any
+    # Show success message if any
     if st.session_state.payment_success:
         st.markdown(f"""
         <div class="success-box">
@@ -343,10 +332,9 @@ def show_subscription_page():
             <p>⚡ You will start receiving news alerts immediately.</p>
         </div>
         """, unsafe_allow_html=True)
-        # Clear the success flag after showing
         st.session_state.payment_success = False
     
-    # Hero Section with new tagline
+    # Hero Section
     st.markdown("""
     <div class="hero">
         <h1>📰 NEXA NEWS</h1>
@@ -370,46 +358,21 @@ def show_subscription_page():
     </div>
     """, unsafe_allow_html=True)
     
-    # Features Section
+    # Features
     st.markdown("### 🎯 Kyon NEXA NEWS?")
-    
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.markdown("""
-        <div class="feature-card">
-            <h1>⚡</h1>
-            <h3>Sabse Tej</h3>
-            <p>2-3 minute mein khabar</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("""<div class="feature-card"><h1>⚡</h1><h3>Sabse Tej</h3><p>2-3 minute mein khabar</p></div>""", unsafe_allow_html=True)
     with col2:
-        st.markdown("""
-        <div class="feature-card">
-            <h1>🎯</h1>
-            <h3>Sirf Agra</h3>
-            <p>100% local news</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("""<div class="feature-card"><h1>🎯</h1><h3>Sirf Agra</h3><p>100% local news</p></div>""", unsafe_allow_html=True)
     with col3:
-        st.markdown("""
-        <div class="feature-card">
-            <h1>📚</h1>
-            <h3>12+ Categories</h3>
-            <p>Har tarah ki khabar</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("""<div class="feature-card"><h1>📚</h1><h3>12+ Categories</h3><p>Har tarah ki khabar</p></div>""", unsafe_allow_html=True)
     with col4:
-        st.markdown("""
-        <div class="feature-card">
-            <h1>🔗</h1>
-            <h3>Multiple Sources</h3>
-            <p>Google News + Times of India</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("""<div class="feature-card"><h1>🔗</h1><h3>Multiple Sources</h3><p>Google News + TOI</p></div>""", unsafe_allow_html=True)
     
     st.markdown("---")
     
-    # Subscription Form
+    # Subscription
     col1, col2 = st.columns([1, 1.2])
     
     with col1:
@@ -433,86 +396,82 @@ def show_subscription_page():
         with st.form("subscribe_form"):
             name = st.text_input("Full Name *", placeholder="Enter your full name")
             telegram_id = st.text_input("Telegram ID *", placeholder="@username or 123456789")
-            categories = st.multiselect("Select Categories", 
-                                       [CATEGORIES[k]['name'] for k in CATEGORIES.keys()],
-                                       default=["📰 All News"])
-            
+            categories = st.multiselect("Select Categories", [CATEGORIES[k]['name'] for k in CATEGORIES.keys()], default=["📰 All News"])
             selected_keys = [k for k, v in CATEGORIES.items() if v['name'] in categories]
-            
             agree = st.checkbox("I agree to receive news alerts on Telegram")
             
-            submitted = st.form_submit_button("🚀 Subscribe Now - ₹100", use_container_width=True, type="primary")
-            
-            if submitted:
+            if st.form_submit_button("🚀 Subscribe Now - ₹100", use_container_width=True, type="primary"):
                 if name and telegram_id and agree:
-                    # Store pending payment
                     st.session_state.payment_pending = {
                         'name': name,
                         'telegram_id': telegram_id,
                         'categories': selected_keys,
                         'amount': 100
                     }
-                    
-                    st.info(f"💳 Pay ₹100 to UPI: **{UPI_ID}**")
-                    
-                    upi_link = f"upi://pay?pa={UPI_ID}&pn=NEXA%20NEWS&am=100&cu=INR"
-                    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={urllib.parse.quote(upi_link)}"
-                    
-                    st.markdown(f"""
-                    <div style="text-align: center;">
-                        <h4>📱 Scan to Pay ₹100</h4>
-                        <img src="{qr_url}" width="200">
-                        <p><b>UPI ID:</b> {UPI_ID}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    st.markdown("---")
-                    st.markdown("### ✅ After Payment")
-                    st.markdown("Click below button after successful payment")
-                    
-                    if st.button("✅ I have made the payment", use_container_width=True):
-                        expiry_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
-                        
-                        new_subscriber = {
-                            'id': len(st.session_state.subscribers) + 1,
-                            'name': name,
-                            'telegram_id': telegram_id,
-                            'categories': selected_keys,
-                            'active': True,
-                            'subscribed_date': datetime.now().strftime('%Y-%m-%d'),
-                            'expiry_date': expiry_date,
-                            'payment_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                            'payment_status': 'completed'
-                        }
-                        st.session_state.subscribers.append(new_subscriber)
-                        
-                        # Send welcome message on Telegram
-                        welcome_msg = f"""🎉 <b>Welcome to NEXA NEWS!</b>
+                    st.rerun()
+                else:
+                    st.error("Please fill all required fields")
+    
+    # Show payment section outside form
+    if st.session_state.payment_pending:
+        st.markdown("---")
+        st.markdown("### 💳 Complete Payment")
+        
+        pending = st.session_state.payment_pending
+        st.info(f"💳 Pay ₹{pending['amount']} to UPI: **{UPI_ID}**")
+        
+        upi_link = f"upi://pay?pa={UPI_ID}&pn=NEXA%20NEWS&am={pending['amount']}&cu=INR"
+        qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={urllib.parse.quote(upi_link)}"
+        
+        st.markdown(f"""
+        <div class="qr-container">
+            <h4>📱 Scan to Pay ₹{pending['amount']}</h4>
+            <img src="{qr_url}" width="200">
+            <p><b>UPI ID:</b> {UPI_ID}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("✅ I have made the payment", use_container_width=True):
+            expiry_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+            
+            new_subscriber = {
+                'id': len(st.session_state.subscribers) + 1,
+                'name': pending['name'],
+                'telegram_id': pending['telegram_id'],
+                'categories': pending['categories'],
+                'active': True,
+                'subscribed_date': datetime.now().strftime('%Y-%m-%d'),
+                'expiry_date': expiry_date,
+                'payment_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'payment_status': 'completed'
+            }
+            st.session_state.subscribers.append(new_subscriber)
+            
+            welcome_msg = f"""🎉 <b>Welcome to NEXA NEWS!</b>
 
-Hello {name},
+Hello {pending['name']},
 
 ✅ Your subscription is ACTIVE until {expiry_date}
-
 💰 Plan: ₹100/month
-📰 Categories: {', '.join([CATEGORIES[k]['name'] for k in selected_keys])}
+📰 Categories: {', '.join([CATEGORIES[k]['name'] for k in pending['categories']])}
 
 ⚡ <b>Agra Ki Sabse Tez Khabre</b>
 
 📞 Support: {PHONE}
 
 <i>Powered by NEXA TECH AI</i>"""
-                        
-                        send_telegram_message(telegram_id, welcome_msg)
-                        
-                        # Set success message
-                        st.session_state.payment_success = True
-                        st.session_state.payment_message = f"Payment confirmed! Welcome {name}!"
-                        st.session_state.payment_pending = None
-                        
-                        st.balloons()
-                        st.rerun()
-                else:
-                    st.error("Please fill all required fields")
+            
+            send_telegram_message(pending['telegram_id'], welcome_msg)
+            
+            st.session_state.payment_success = True
+            st.session_state.payment_message = f"Payment confirmed! Welcome {pending['name']}!"
+            st.session_state.payment_pending = None
+            st.balloons()
+            st.rerun()
+        
+        if st.button("❌ Cancel", use_container_width=True):
+            st.session_state.payment_pending = None
+            st.rerun()
 
 # ============================================
 # ADMIN DASHBOARD
@@ -610,7 +569,6 @@ def show_login():
 # ============================================
 # MAIN
 # ============================================
-
 with st.sidebar:
     st.markdown("""
     <div style="text-align: center; padding: 1rem;">
@@ -629,7 +587,6 @@ with st.sidebar:
             st.rerun()
     else:
         mode = st.radio("", ["📰 Subscribe", "🔐 Admin"], label_visibility="collapsed")
-        
         if mode == "🔐 Admin":
             st.session_state.show_admin = True
         else:
@@ -652,7 +609,7 @@ elif st.session_state.get('show_admin', False):
 else:
     show_subscription_page()
 
-# Start background thread for news
+# Start background thread
 if 'news_thread_started' not in st.session_state:
     st.session_state.news_thread_started = True
     thread = threading.Thread(target=check_new_news, daemon=True)
