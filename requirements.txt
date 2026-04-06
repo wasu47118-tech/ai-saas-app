@@ -2,7 +2,4 @@ streamlit
 pandas
 feedparser
 requests
-pywhatkit
 schedule
-bs4
-lxml
