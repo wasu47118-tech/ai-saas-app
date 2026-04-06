@@ -44,7 +44,7 @@ PHONE = "8439049681"
 # STEP 3: Give name: Agra News Bot
 # STEP 4: Give username: agra_news_bot
 # STEP 5: Copy token and paste below
-TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"  # CHANGE THIS AFTER GETTING TOKEN
+TELEGRAM_BOT_TOKEN = "8532416007:AAEzEjHNIJH97-Xmn7j75L8suuh_etbCkBk"  # CHANGE THIS AFTER GETTING TOKEN
 
 # Categories
 CATEGORIES = {
