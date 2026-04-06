@@ -98,30 +98,7 @@ def fetch_agra_news():
     except:
         pass
     
-    # Source 2: NewsAPI (Agra)
-    try:
-        # Free API - limited requests
-        api_key = "YOUR_NEWSAPI_KEY"  # Get free from newsapi.org
-        url = f"https://newsapi.org/v2/everything?q=Agra&language=en&sortBy=publishedAt&apiKey={api_key}"
-        response = requests.get(url, timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            for article in data.get('articles', [])[:10]:
-                title = article.get('title', '')
-                if title and title not in seen_titles:
-                    seen_titles.add(title)
-                    all_news.append({
-                        'title': title,
-                        'summary': article.get('description', '')[:200],
-                        'link': article.get('url', ''),
-                        'source': 'NewsAPI',
-                        'time': datetime.now().strftime('%H:%M:%S'),
-                        'date': article.get('publishedAt', '')[:10]
-                    })
-    except:
-        pass
-    
-    # Source 3: Times of India (Agra)
+    # Source 2: Times of India (Agra)
     try:
         url = "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms"
         feed = feedparser.parse(url)
@@ -141,7 +118,7 @@ def fetch_agra_news():
     except:
         pass
     
-    # Source 4: Amar Ujala (Agra in Hindi)
+    # Source 3: Amar Ujala (Agra in Hindi)
     try:
         url = "https://www.amarujala.com/rss/agra.xml"
         feed = feedparser.parse(url)
@@ -160,7 +137,7 @@ def fetch_agra_news():
     except:
         pass
     
-    # Source 5: Hindustan (Agra)
+    # Source 4: Hindustan (Agra)
     try:
         url = "https://www.livehindustan.com/rss/agra/feed.rss"
         feed = feedparser.parse(url)
@@ -168,14 +145,14 @@ def fetch_agra_news():
             title = entry.title
             if title not in seen_titles:
                 seen_titles.add(title)
-                    all_news.append({
-                        'title': title,
-                        'summary': entry.get('summary', '')[:200],
-                        'link': entry.link,
-                        'source': 'Hindustan',
-                        'time': datetime.now().strftime('%H:%M:%S'),
-                        'date': datetime.now().strftime('%Y-%m-%d')
-                    })
+                all_news.append({
+                    'title': title,
+                    'summary': entry.get('summary', '')[:200],
+                    'link': entry.link,
+                    'source': 'Hindustan',
+                    'time': datetime.now().strftime('%H:%M:%S'),
+                    'date': datetime.now().strftime('%Y-%m-%d')
+                })
     except:
         pass
     
@@ -213,21 +190,13 @@ def categorize_news(text):
         return "local"
 
 def send_whatsapp_message(phone, message):
-    """Send WhatsApp message (using pywhatkit or similar)"""
+    """Send WhatsApp message"""
     try:
-        # Method 1: PyWhatKit (requires web.whatsapp.com open)
         import pywhatkit as kit
-        # Send instantly
         kit.sendwhatmsg_instantly(phone, message, wait_time=15)
         return True
     except:
-        try:
-            # Method 2: Using requests (if you have WhatsApp API)
-            # api_url = "https://api.whatsapp.com/send?phone=" + phone + "&text=" + message
-            # webbrowser.open(api_url)
-            return False
-        except:
-            return False
+        return False
 
 def send_news_to_subscribers(news):
     """Send news to all subscribers"""
@@ -254,7 +223,6 @@ def send_news_to_subscribers(news):
         if sub.get('active', True):
             send_whatsapp_message(sub['phone'], message)
     
-    # Add to sent history
     st.session_state.sent_news.add(news['title'])
     st.session_state.news_history.append({
         'title': news['title'],
@@ -270,7 +238,7 @@ def check_new_news():
             for news in news_list:
                 if news['title'] not in st.session_state.sent_news:
                     send_news_to_subscribers(news)
-            time.sleep(120)  # Check every 2 minutes
+            time.sleep(120)
         except:
             time.sleep(60)
 
@@ -313,14 +281,12 @@ def show_subscription_page():
             phone = st.text_input("WhatsApp Number *", placeholder="+91XXXXXXXXXX")
             categories = st.multiselect("Select News Categories", list(CATEGORIES.values()), default=["📰 All News"])
             
-            # Convert selected categories to keys
             selected_keys = [k for k, v in CATEGORIES.items() if v in categories]
             
             agree = st.checkbox("I agree to receive news alerts on WhatsApp")
             
             if st.form_submit_button("💰 Subscribe - ₹100/month", use_container_width=True, type="primary"):
                 if name and phone and agree:
-                    # Store subscriber
                     subscriber = {
                         'id': len(st.session_state.subscribers) + 1,
                         'name': name,
@@ -332,15 +298,13 @@ def show_subscription_page():
                     }
                     st.session_state.subscribers.append(subscriber)
                     
-                    # Show payment QR
                     st.info(f"💳 Pay ₹100 to UPI: {UPI_ID}")
                     st.success("✅ After payment, service will be activated!")
                     
-                    # Show QR code (optional)
-                    st.markdown("""
+                    st.markdown(f"""
                     <div style="text-align: center;">
                         <p>Scan to Pay</p>
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=8439049681@pthdfc&pn=NEXA%20NEWS&am=100&cu=INR" width="200">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa={UPI_ID}&pn=NEXA%20NEWS&am=100&cu=INR" width="200">
                     </div>
                     """, unsafe_allow_html=True)
                 else:
@@ -368,7 +332,7 @@ def show_admin_dashboard():
     with col3:
         st.metric("🕐 Update Frequency", "2 minutes")
     with col4:
-        st.metric("📡 Sources Active", "5")
+        st.metric("📡 Sources Active", "4")
     
     st.markdown("---")
     
@@ -379,7 +343,6 @@ def show_admin_dashboard():
             df = pd.DataFrame(st.session_state.subscribers)
             st.dataframe(df, use_container_width=True, hide_index=True)
             
-            # Manual send option
             st.markdown("### 📤 Manual News Send")
             news_title = st.text_input("News Title")
             news_content = st.text_area("News Content")
@@ -401,7 +364,6 @@ def show_admin_dashboard():
     with tab3:
         st.markdown("### ⚙️ System Settings")
         
-        # Test WhatsApp
         st.markdown("#### 📱 Test WhatsApp")
         test_phone = st.text_input("Test Phone Number")
         test_msg = st.text_area("Test Message", "This is a test message from NEXA NEWS AI")
@@ -414,7 +376,7 @@ def show_admin_dashboard():
         st.json({
             'total_subscribers': len(st.session_state.subscribers),
             'total_news_sent': len(st.session_state.sent_news),
-            'active_sources': 5,
+            'active_sources': 4,
             'update_frequency': '2 minutes'
         })
 
@@ -449,7 +411,6 @@ def show_login():
 # MAIN
 # ============================================
 
-# Sidebar
 with st.sidebar:
     st.markdown("### 📰 NEXA NEWS AI")
     st.markdown("Agra News Alert System")
@@ -475,12 +436,11 @@ with st.sidebar:
         • Only Agra News<br>
         • Real-time alerts<br>
         • No duplicates<br>
-        • 5+ news sources<br>
+        • 4+ news sources<br>
         • ₹100/month
     </div>
     """, unsafe_allow_html=True)
 
-# Page routing
 if st.session_state.logged_in:
     show_admin_dashboard()
 elif st.session_state.get('show_admin', False):
@@ -488,9 +448,6 @@ elif st.session_state.get('show_admin', False):
 else:
     show_subscription_page()
 
-# ============================================
-# BACKGROUND NEWS CHECKER (Starts only once)
-# ============================================
 if 'news_thread_started' not in st.session_state:
     st.session_state.news_thread_started = True
     thread = threading.Thread(target=check_new_news, daemon=True)
