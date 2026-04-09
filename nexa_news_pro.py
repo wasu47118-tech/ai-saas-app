@@ -332,6 +332,7 @@ def show_subscription_page():
             <p>⚡ You will start receiving news alerts immediately.</p>
         </div>
         """, unsafe_allow_html=True)
+        # Clear after showing
         st.session_state.payment_success = False
     
     # Hero Section
@@ -431,23 +432,25 @@ def show_subscription_page():
         </div>
         """, unsafe_allow_html=True)
         
-        if st.button("✅ I have made the payment", use_container_width=True):
-            expiry_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
-            
-            new_subscriber = {
-                'id': len(st.session_state.subscribers) + 1,
-                'name': pending['name'],
-                'telegram_id': pending['telegram_id'],
-                'categories': pending['categories'],
-                'active': True,
-                'subscribed_date': datetime.now().strftime('%Y-%m-%d'),
-                'expiry_date': expiry_date,
-                'payment_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'payment_status': 'completed'
-            }
-            st.session_state.subscribers.append(new_subscriber)
-            
-            welcome_msg = f"""🎉 <b>Welcome to NEXA NEWS!</b>
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("✅ Yes, Payment Done", use_container_width=True, type="primary"):
+                expiry_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+                
+                new_subscriber = {
+                    'id': len(st.session_state.subscribers) + 1,
+                    'name': pending['name'],
+                    'telegram_id': pending['telegram_id'],
+                    'categories': pending['categories'],
+                    'active': True,
+                    'subscribed_date': datetime.now().strftime('%Y-%m-%d'),
+                    'expiry_date': expiry_date,
+                    'payment_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'payment_status': 'completed'
+                }
+                st.session_state.subscribers.append(new_subscriber)
+                
+                welcome_msg = f"""🎉 <b>Welcome to NEXA NEWS!</b>
 
 Hello {pending['name']},
 
@@ -460,18 +463,19 @@ Hello {pending['name']},
 📞 Support: {PHONE}
 
 <i>Powered by NEXA TECH AI</i>"""
-            
-            send_telegram_message(pending['telegram_id'], welcome_msg)
-            
-            st.session_state.payment_success = True
-            st.session_state.payment_message = f"Payment confirmed! Welcome {pending['name']}!"
-            st.session_state.payment_pending = None
-            st.balloons()
-            st.rerun()
+                
+                send_telegram_message(pending['telegram_id'], welcome_msg)
+                
+                st.session_state.payment_success = True
+                st.session_state.payment_message = f"Payment confirmed! Welcome {pending['name']}!"
+                st.session_state.payment_pending = None
+                st.balloons()
+                st.rerun()
         
-        if st.button("❌ Cancel", use_container_width=True):
-            st.session_state.payment_pending = None
-            st.rerun()
+        with col2:
+            if st.button("❌ Cancel", use_container_width=True):
+                st.session_state.payment_pending = None
+                st.rerun()
 
 # ============================================
 # ADMIN DASHBOARD
